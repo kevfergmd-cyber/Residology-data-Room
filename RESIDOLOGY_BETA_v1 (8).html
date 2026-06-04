@@ -6670,6 +6670,11 @@ function qbShowImportedPreview(questions){
 }
 
 
+function syncQBankCounter(){
+  var el = document.getElementById('lsLoaded');
+  if(el) el.textContent = QUESTIONS.length;
+}
+
 function restoreQBank(){
   try{
     var saved=localStorage.getItem('resid_qbank');if(!saved)return;
@@ -6681,6 +6686,8 @@ function restoreQBank(){
       QUESTIONS.length=0;
       data.questions.forEach(function(q){QUESTIONS.push(q);});
       console.log('[QBank] Restored',QUESTIONS.length,'questions from cache');
+      var lsEl = document.getElementById('lsLoaded');
+      if(lsEl) lsEl.textContent = QUESTIONS.length;
     } else {
       // Stale or smaller cache — discard and use built-in
       localStorage.removeItem('resid_qbank');
