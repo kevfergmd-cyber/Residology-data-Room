@@ -546,6 +546,7 @@ body{background:var(--navy);color:var(--text);font-family:'Inter',sans-serif;fon
     <button class="nt" onclick="nav('team',this)">🏆 Team Mode</button>
     <button class="nt" onclick="nav('online',this)">🌐 Online Challenge</button>
     <button class="nt" onclick="nav('loader',this)">📥 Question Bank</button>
+    <button class="nt" onclick="nav('catalog',this)">📋 Question Catalog</button>
     <button class="nt" onclick="nav('pd',this)">📊 PD Dashboard</button>
     <button class="nt" onclick="nav('conf',this)">🎤 Conference</button>
       <button class="nt" onclick="nav('sim',this)">⚡ Simulate</button>
@@ -2048,6 +2049,8 @@ function showWildCardPicker(playerIdx){
     <button onclick="document.getElementById('wildcardModal').remove();endTurn();" style="width:100%;margin-top:14px;padding:8px;background:transparent;border:1px solid var(--bdim);border-radius:8px;color:var(--muted);cursor:pointer;font-size:12px">Skip (no question)</button>
   </div>`;
   document.body.appendChild(modal);
+  var closeBtn = document.getElementById('catModalClose');
+  if(closeBtn) closeBtn.onclick = function(){ modal.remove(); };
 }
 
 function pickWildTopic(topic){
@@ -6851,7 +6854,240 @@ function deletePlayer(idx){
   toast('Removed '+name);
 }
 
+
+// ══ QUESTION CATALOG ══════════════════════════════════════════════
+var _catPage = 1;
+var _catPageSize = 50;
+var _catFiltered = [];
+
+function catInit(){
+  // Populate topic dropdown from QUESTIONS
+  var topics = {};
+  QUESTIONS.forEach(function(q){ if(q.topic) topics[q.topic] = true; });
+  var sel = document.getElementById('catTopicFilter');
+  if(sel){
+    Object.keys(topics).sort().forEach(function(t){
+      var opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      sel.appendChild(opt);
+    });
+  }
+  catRender();
+}
+
+function catRender(){
+  _catPage = 1;
+  var src   = (document.getElementById('catSourceFilter')||{}).value||'';
+  var topic = (document.getElementById('catTopicFilter')||{}).value||'';
+  var ans   = (document.getElementById('catAnsFilter')||{}).value||'';
+  var search= ((document.getElementById('catSearch')||{}).value||'').toLowerCase();
+
+  _catFiltered = QUESTIONS.filter(function(q){
+    if(src && (q.source||'Built-in').indexOf(src)<0) return false;
+    if(topic && q.topic !== topic) return false;
+    if(ans==='answered' && !q.ans) return false;
+    if(ans==='unanswered' && q.ans) return false;
+    if(search && (q.q||'').toLowerCase().indexOf(search)<0) return false;
+    return true;
+  });
+
+  var countEl = document.getElementById('catCount');
+  if(countEl) countEl.textContent = _catFiltered.length+' of '+QUESTIONS.length+' questions';
+
+  catRenderPage();
+}
+
+function catRenderPage(){
+  var body = document.getElementById('catBody');
+  if(!body) return;
+  body.innerHTML = '';
+
+  var start = (_catPage-1)*_catPageSize;
+  var page  = _catFiltered.slice(start, start+_catPageSize);
+
+  page.forEach(function(q, i){
+    var tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.1s';
+    tr.onmouseover = function(){ this.style.background='rgba(255,255,255,0.04)'; };
+    tr.onmouseout  = function(){ this.style.background=''; };
+    tr.onclick     = function(){ catShowQuestion(q); };
+
+    var src = q.source||'Built-in';
+    var srcColor = src==='Built-in' ? 'var(--muted)' :
+                   src.indexOf('PEER')>=0 ? '#00A896' :
+                   src.indexOf('ROSH')>=0 ? '#C9A227' : '#7B61FF';
+
+    var ansColor = q.ans ? '#3EC66A' : '#E84855';
+    var ansText  = q.ans || '—';
+
+    tr.innerHTML =
+      '<td style="padding:8px 10px;color:var(--muted);font-family:monospace">'+(start+i+1)+'</td>'+
+      '<td style="padding:8px 10px;color:var(--cream);max-width:360px">'+
+        '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px">'+
+          (q.q||'').substring(0,100)+(q.q&&q.q.length>100?'...':'')+
+        '</div>'+
+      '</td>'+
+      '<td style="padding:8px 10px;text-align:center">'+
+        '<span style="font-family:monospace;font-size:9px;background:rgba(201,162,39,0.1);color:var(--gold);'+
+               'border-radius:4px;padding:2px 7px">'+(q.topic||'General')+'</span>'+
+      '</td>'+
+      '<td style="padding:8px 10px;text-align:center">'+
+        '<span style="font-family:monospace;font-size:9px;color:'+srcColor+'">'+src+'</span>'+
+      '</td>'+
+      '<td style="padding:8px 10px;text-align:center;font-family:monospace;font-weight:700;color:'+ansColor+'">'+ansText+'</td>'+
+      '<td style="padding:8px 10px;text-align:center;font-family:monospace;color:var(--muted)">'+(q.pts||10)+'</td>';
+    body.appendChild(tr);
+  });
+
+  catRenderPager();
+}
+
+function catRenderPager(){
+  var pager = document.getElementById('catPager');
+  if(!pager) return;
+  pager.innerHTML = '';
+  var totalPages = Math.ceil(_catFiltered.length / _catPageSize);
+  if(totalPages <= 1){ return; }
+
+  function pgBtn(label, page, active){
+    var btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.cssText = 'padding:6px 12px;border-radius:6px;font-family:monospace;font-size:10px;cursor:pointer;'+
+      'background:'+(active?'var(--gold)':'rgba(255,255,255,0.06)')+';'+
+      'color:'+(active?'#0D1B3E':'var(--cream)')+';border:1px solid rgba(255,255,255,0.15)';
+    btn.onclick = function(){ _catPage=page; catRenderPage(); };
+    return btn;
+  }
+
+  if(_catPage > 1) pager.appendChild(pgBtn('← Prev', _catPage-1, false));
+
+  var start = Math.max(1, _catPage-2);
+  var end   = Math.min(totalPages, _catPage+2);
+  for(var pg=start; pg<=end; pg++){
+    pager.appendChild(pgBtn(pg, pg, pg===_catPage));
+  }
+  if(_catPage < totalPages) pager.appendChild(pgBtn('Next →', _catPage+1, false));
+
+  var info = document.createElement('div');
+  info.style.cssText = 'font-family:monospace;font-size:9px;color:var(--muted)';
+  info.textContent = 'Page '+_catPage+' of '+totalPages;
+  pager.appendChild(info);
+}
+
+function catShowQuestion(q){
+  // Show full question in a modal
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,14,31,0.92);z-index:600;'+
+    'display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+
+  var opts = ['A','B','C','D'].filter(function(l){ return q.opts&&q.opts[l]; })
+    .map(function(l){
+      var isAns = l===q.ans;
+      return '<div style="padding:8px 12px;margin-bottom:6px;border-radius:6px;'+
+        'background:'+(isAns?'rgba(62,198,106,0.12)':'rgba(255,255,255,0.04)')+';'+
+        'border:1px solid '+(isAns?'rgba(62,198,106,0.4)':'rgba(255,255,255,0.08)')+';'+
+        'color:'+(isAns?'#3EC66A':'var(--cream)')+';font-size:12px">'+
+        '<strong>'+l+'.</strong> '+q.opts[l]+'</div>';
+    }).join('');
+
+  modal.innerHTML =
+    '<div style="background:#132044;border:1px solid rgba(201,162,39,0.2);border-radius:14px;'+
+         'padding:28px;max-width:580px;width:100%;max-height:80vh;overflow-y:auto">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<span style="font-family:monospace;font-size:9px;color:#00A896;background:rgba(0,168,150,0.1);'+
+                 'border:1px solid rgba(0,168,150,0.2);border-radius:4px;padding:3px 8px">'+(q.source||'Built-in')+'</span>'+
+          '<span style="font-family:monospace;font-size:9px;color:var(--gold);background:rgba(201,162,39,0.1);'+
+                 'border:1px solid rgba(201,162,39,0.2);border-radius:4px;padding:3px 8px">'+(q.topic||'General')+'</span>'+
+          '<span style="font-family:monospace;font-size:9px;color:var(--muted);border:1px solid rgba(255,255,255,0.1);'+
+                 'border-radius:4px;padding:3px 8px">'+q.pts+' pts</span>'+
+        '</div>'+
+        '<button id="catModalClose" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">&#x2715;</button>'+
+      '</div>'+
+      '<div style="font-size:14px;color:var(--cream);line-height:1.6;margin-bottom:16px">'+q.q+'</div>'+
+      opts+
+      (q.reference?'<div style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:6px;'+
+        'font-size:11px;color:var(--muted)">📖 '+q.reference+'</div>':'')+
+    '</div>';
+
+  document.body.appendChild(modal);
+}
+
 </script>
+
+
+
+<div class="pg" id="pg-catalog">
+  <div class="stitle">Question Catalog</div>
+  <div class="ssub">Browse, filter and QA your question bank</div>
+
+  <!-- Toolbar -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+    <!-- Source filter -->
+    <select id="catSourceFilter" onchange="catRender()"
+      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      <option value="">All Sources</option>
+      <option value="Built-in">Built-in</option>
+      <option value="ACEP PEER">ACEP PEER</option>
+      <option value="ROSH Review">ROSH Review</option>
+      <option value="UWorld">UWorld</option>
+      <option value="QBank">Other QBank</option>
+    </select>
+
+    <!-- Topic filter -->
+    <select id="catTopicFilter" onchange="catRender()"
+      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      <option value="">All Topics</option>
+    </select>
+
+    <!-- Answer filter -->
+    <select id="catAnsFilter" onchange="catRender()"
+      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      <option value="">All Questions</option>
+      <option value="answered">With Answer</option>
+      <option value="unanswered">Missing Answer</option>
+    </select>
+
+    <!-- Search -->
+    <input type="text" id="catSearch" placeholder="Search question text..."
+      oninput="catRender()"
+      style="flex:1;min-width:160px;padding:8px 12px;background:rgba(255,255,255,0.06);
+             border:1px solid rgba(255,255,255,0.15);border-radius:7px;color:var(--cream);
+             font-size:11px;outline:none">
+
+    <div id="catCount" style="font-family:monospace;font-size:10px;color:var(--muted);white-space:nowrap"></div>
+  </div>
+
+  <!-- Table -->
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:11px" id="catTable">
+      <thead>
+        <tr style="background:var(--navy-deep,#0A1530)">
+          <th style="padding:8px 10px;text-align:left;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">#</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Question</th>
+          <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Topic</th>
+          <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Source</th>
+          <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Ans</th>
+          <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Pts</th>
+        </tr>
+      </thead>
+      <tbody id="catBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px" id="catPager"></div>
+</div>
 
 </body>
 </html>
