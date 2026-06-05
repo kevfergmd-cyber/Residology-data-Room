@@ -6855,20 +6855,160 @@ function deletePlayer(idx){
 }
 
 
+
+// ══ ABEM AUTO-DIFFICULTY ══════════════════════════════════════════
+function abemDifficulty(q){
+  var text = ((q.q||'') + ' ' + (q.topic||'')).toLowerCase();
+  // Hard: complex pathophysiology, advanced management, critical care
+  var hardKw = /lvad|ecmo|ards|ventilat|intubat|rsi|cricothyr|septic shock|cardiogenic shock|torsades|brugada|wenckebach|mobitz|delta wave|wolf.parkinson|cardiac tamponade|tension pneumo|compartment syndrome|rhabdomyolysis|thyroid storm|adrenal crisis|meningitis.*treatment|status epilepticus|eclampsia|hellp|dic|tpa.*stroke|hypothermia.*cardiac|drowning|crush|overdose.*management|antidote|toxidrome|organophosphate|carbon monoxide|cyanide|methemoglobin|hyperkalemia.*treatment|transfusion.*reaction|malignant hyperthermia|neuroleptic|serotonin syndrome|dialysis|renal replacement/;
+  if(hardKw.test(text)) return 3;
+  // Easy: recognition, normal values, classic single-step
+  var easyKw = /most common.*cause|classic.*presentation|first.*line|which.*following.*is.*true|normal.*value|define|sign.*of|symptom.*of|associated.*with|what.*is.*the|which.*best.*describes|most.*likely.*diagnosis.*straightforward/;
+  var stem = (q.q||'').toLowerCase();
+  if(easyKw.test(stem) && stem.length < 180) return 1;
+  return 2; // Medium default
+}
+
+function abemDiffLabel(d){ return d===1?'Easy':d===3?'Hard':'Medium'; }
+function abemDiffColor(d){ return d===1?'#3EC66A':d===3?'#E84855':'#C9A227'; }
+function abemDiffPts(d)  { return d===1?5:d===3?15:10; }
+
+// Apply auto-difficulty to all questions missing explicit difficulty
+function applyAutoDifficulty(){
+  var updated = 0;
+  QUESTIONS.forEach(function(q){
+    if(!q.diff || q.diff===2){
+      var d = abemDifficulty(q);
+      if(d !== q.diff){ q.diff=d; q.pts=abemDiffPts(d); updated++; }
+    }
+  });
+  if(updated>0){
+    try{ localStorage.setItem('resid_qbank',JSON.stringify({questions:QUESTIONS})); }catch(e){}
+  }
+  return updated;
+}
+
+
+// ══ SESSION BUILDER ═══════════════════════════════════════════════
+function sbInit(){
+  // Populate topics
+  var topics = {};
+  QUESTIONS.forEach(function(q){ if(q.topic) topics[q.topic]=true; });
+  var tSel = document.getElementById('sbTopics');
+  if(tSel){
+    tSel.innerHTML='';
+    Object.keys(topics).sort().forEach(function(t){
+      var cnt = QUESTIONS.filter(function(q){return q.topic===t;}).length;
+      var opt = document.createElement('option');
+      opt.value=t; opt.textContent=t+' ('+cnt+')';
+      tSel.appendChild(opt);
+    });
+  }
+  // Populate sources
+  var sources = {};
+  QUESTIONS.forEach(function(q){ sources[q.source||'Built-in']=true; });
+  var sSel = document.getElementById('sbSources');
+  if(sSel){
+    sSel.innerHTML='';
+    Object.keys(sources).sort().forEach(function(s){
+      var cnt = QUESTIONS.filter(function(q){return (q.source||'Built-in')===s;}).length;
+      var opt = document.createElement('option');
+      opt.value=s; opt.textContent=s+' ('+cnt+')';
+      sSel.appendChild(opt);
+    });
+    // Select all by default
+    for(var i=0;i<sSel.options.length;i++) sSel.options[i].selected=true;
+  }
+  sbUpdateCount();
+}
+
+function sbGetFilter(){
+  var tSel = document.getElementById('sbTopics');
+  var sSel = document.getElementById('sbSources');
+  var topics  = tSel ? Array.from(tSel.selectedOptions).map(function(o){return o.value;}) : [];
+  var sources = sSel ? Array.from(sSel.selectedOptions).map(function(o){return o.value;}) : [];
+  var diffs = [];
+  if(document.getElementById('sbEasy')&&document.getElementById('sbEasy').checked) diffs.push(1);
+  if(document.getElementById('sbMed')&&document.getElementById('sbMed').checked)  diffs.push(2);
+  if(document.getElementById('sbHard')&&document.getElementById('sbHard').checked) diffs.push(3);
+  return {topics:topics, sources:sources, diffs:diffs};
+}
+
+function sbFilter(){
+  var f = sbGetFilter();
+  return QUESTIONS.filter(function(q){
+    if(f.topics.length && f.topics.indexOf(q.topic)<0) return false;
+    if(f.sources.length && f.sources.indexOf(q.source||'Built-in')<0) return false;
+    if(f.diffs.length && f.diffs.indexOf(q.diff||2)<0) return false;
+    return true;
+  });
+}
+
+function sbUpdateCount(){
+  var filtered = sbFilter();
+  var avail = document.getElementById('sbAvailable');
+  if(avail) avail.textContent = filtered.length+' questions available';
+}
+
+function sbPreview(){
+  var filtered = sbFilter();
+  var n = parseInt((document.getElementById('sbCount')||{}).value||20);
+  var selected = filtered.slice(0, Math.min(n, filtered.length));
+  var status = document.getElementById('sbStatus');
+  if(status) status.textContent = selected.length+' questions selected from '+
+    [...new Set(selected.map(function(q){return q.topic;}))].length+' topics, '+
+    [...new Set(selected.map(function(q){return q.source||'Built-in'}))].length+' sources';
+  toast('Preview: '+selected.length+' questions — click Launch to start game');
+}
+
+function sbLaunch(){
+  var filtered = sbFilter();
+  var n = parseInt((document.getElementById('sbCount')||{}).value||20);
+  if(filtered.length===0){ toast('No questions match your selection'); return; }
+
+  // Shuffle and pick n
+  var pool = filtered.slice();
+  for(var i=pool.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp;
+  }
+  var session = pool.slice(0, Math.min(n, pool.length));
+
+  // Store session questions and launch solo board
+  window._sessionQuestions = session;
+  window._sessionMode = 'custom';
+
+  // Navigate to solo board with custom question set
+  nav('solo', document.querySelector('[onclick*="solo"]'));
+  setTimeout(function(){
+    toast('Session loaded: '+session.length+' questions from your selection. Start a game to play!');
+    // Flag that custom session is ready
+    if(typeof soloSetCustomSession === 'function'){
+      soloSetCustomSession(session);
+    }
+  }, 400);
+}
+
 // ══ QUESTION CATALOG ══════════════════════════════════════════════
 var _catPage = 1;
+var _catSortBy = 'id';
+var _catSortDir = 1;
 var _catPageSize = 50;
 var _catFiltered = [];
 
 function catInit(){
-  // Populate topic dropdown from QUESTIONS
+  applyAutoDifficulty();
+  // Rebuild topic dropdown fresh each time
   var topics = {};
   QUESTIONS.forEach(function(q){ if(q.topic) topics[q.topic] = true; });
   var sel = document.getElementById('catTopicFilter');
   if(sel){
+    // Clear existing options except "All Topics"
+    while(sel.options.length > 1) sel.remove(1);
     Object.keys(topics).sort().forEach(function(t){
       var opt = document.createElement('option');
-      opt.value = t; opt.textContent = t;
+      opt.value = t; opt.textContent = t + ' (' +
+        QUESTIONS.filter(function(q){return q.topic===t;}).length + ')';
       sel.appendChild(opt);
     });
   }
@@ -6894,7 +7034,24 @@ function catRender(){
   var countEl = document.getElementById('catCount');
   if(countEl) countEl.textContent = _catFiltered.length+' of '+QUESTIONS.length+' questions';
 
+  // Sort
+  _catFiltered.sort(function(a,b){
+    var av, bv;
+    if(_catSortBy==='topic'){ av=a.topic||''; bv=b.topic||''; }
+    else if(_catSortBy==='diff'){ av=a.diff||2; bv=b.diff||2; }
+    else if(_catSortBy==='source'){ av=a.source||''; bv=b.source||''; }
+    else { av=a.id||0; bv=b.id||0; }
+    if(av<bv) return -1*_catSortDir;
+    if(av>bv) return 1*_catSortDir;
+    return 0;
+  });
   catRenderPage();
+}
+
+function catSort(col){
+  if(_catSortBy===col) _catSortDir*=-1;
+  else { _catSortBy=col; _catSortDir=1; }
+  catRender();
 }
 
 function catRenderPage(){
@@ -6935,7 +7092,11 @@ function catRenderPage(){
         '<span style="font-family:monospace;font-size:9px;color:'+srcColor+'">'+src+'</span>'+
       '</td>'+
       '<td style="padding:8px 10px;text-align:center;font-family:monospace;font-weight:700;color:'+ansColor+'">'+ansText+'</td>'+
-      '<td style="padding:8px 10px;text-align:center;font-family:monospace;color:var(--muted)">'+(q.pts||10)+'</td>';
+      '<td style="padding:8px 10px;text-align:center">'+
+        '<span style="font-family:monospace;font-size:9px;font-weight:700;color:'+abemDiffColor(q.diff||2)+'">'+
+          abemDiffLabel(q.diff||2)+'</span>'+
+      '</td>'+
+      '<td style="padding:8px 10px;text-align:center;font-family:monospace;color:var(--muted)">'+(q.pts||abemDiffPts(q.diff||2))+'</td>';
     body.appendChild(tr);
   });
 
@@ -7074,9 +7235,11 @@ function catShowQuestion(q){
           <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
                      letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Topic</th>
           <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
-                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Source</th>
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)" style="cursor:pointer" onclick="catSort('source')" title="Click to sort">Source ↕</th>
           <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
                      letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Ans</th>
+          <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
+                     letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)" style="cursor:pointer" onclick="catSort('diff')" title="Click to sort">Diff ↕</th>
           <th style="padding:8px 10px;text-align:center;color:var(--gold);font-family:monospace;font-size:9px;
                      letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.1)">Pts</th>
         </tr>
@@ -7087,6 +7250,79 @@ function catShowQuestion(q){
 
   <!-- Pagination -->
   <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px" id="catPager"></div>
+
+  <!-- Session Builder -->
+  <div style="margin-top:24px;background:rgba(0,168,150,0.06);border:1px solid rgba(0,168,150,0.2);
+              border-radius:12px;padding:20px">
+    <div style="font-family:var(--ff-display,cursive);font-size:18px;color:var(--teal);
+                letter-spacing:2px;margin-bottom:6px">Session Builder</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      Build a custom game session by topic and source — Morning Report, Grand Rounds, Conference prep
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <!-- Topics (multi-select) -->
+      <div>
+        <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--muted);margin-bottom:6px">Topics (hold Ctrl for multiple)</div>
+        <select id="sbTopics" multiple size="8" onchange="sbUpdateCount()"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);
+                 border-radius:7px;color:var(--cream);font-size:11px;padding:4px"></select>
+      </div>
+
+      <!-- Sources (multi-select) -->
+      <div>
+        <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--muted);margin-bottom:6px">Sources (hold Ctrl for multiple)</div>
+        <select id="sbSources" multiple size="4" onchange="sbUpdateCount()"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);
+                 border-radius:7px;color:var(--cream);font-size:11px;padding:4px"></select>
+
+        <div style="margin-top:12px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                      color:var(--muted);margin-bottom:6px">Difficulty</div>
+          <div style="display:flex;gap:8px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--cream);cursor:pointer">
+              <input type="checkbox" id="sbEasy" checked> <span style="color:#3EC66A">Easy (5pts)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--cream);cursor:pointer">
+              <input type="checkbox" id="sbMed" checked> <span style="color:#C9A227">Medium (10pts)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--cream);cursor:pointer">
+              <input type="checkbox" id="sbHard" checked> <span style="color:#E84855">Hard (15pts)</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                      color:var(--muted);margin-bottom:6px">Number of Questions</div>
+          <input type="number" id="sbCount" value="20" min="5" max="200"
+            style="width:80px;padding:7px 10px;background:rgba(255,255,255,0.06);
+                   border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--cream);
+                   font-size:13px;text-align:center">
+          <span id="sbAvailable" style="font-family:monospace;font-size:10px;color:var(--muted);margin-left:10px"></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <button onclick="sbPreview()"
+        style="padding:10px 20px;background:rgba(0,168,150,0.15);border:1px solid rgba(0,168,150,0.4);
+               border-radius:8px;color:var(--teal);font-family:monospace;font-size:10px;
+               letter-spacing:1px;cursor:pointer;text-transform:uppercase">
+        Preview Selection
+      </button>
+      <button onclick="sbLaunch()"
+        style="padding:10px 24px;background:var(--gold);border:none;border-radius:8px;
+               color:#0D1B3E;font-family:var(--ff-display,cursive);font-size:16px;
+               letter-spacing:2px;cursor:pointer">
+        Launch Session →
+      </button>
+      <div id="sbStatus" style="font-family:monospace;font-size:10px;color:var(--muted)"></div>
+    </div>
+  </div>
+
 </div>
 
 </body>
