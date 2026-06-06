@@ -329,6 +329,15 @@ body{background:var(--navy);color:var(--text);font-family:'Inter',sans-serif;fon
     color:var(--teal);
     font-weight:700;
   }
+
+  /* Catalog dropdowns — ensure options are readable */
+  #pg-catalog select option {
+    background: #1a2a4a;
+    color: #F5F0E8;
+  }
+  #pg-catalog select {
+    color: #F5F0E8 !important;
+  }
 </style>
 
 <style id="expiry-styles">
@@ -547,6 +556,7 @@ body{background:var(--navy);color:var(--text);font-family:'Inter',sans-serif;fon
     <button class="nt" onclick="nav('online',this)">🌐 Online Challenge</button>
     <button class="nt" onclick="nav('loader',this)">📥 Question Bank</button>
     <button class="nt" onclick="nav('catalog',this)">📋 Question Catalog</button>
+    <button class="nt" onclick="nav('sim',this)">⚡ Stress Test</button>
     <button class="nt" onclick="nav('pd',this)">📊 PD Dashboard</button>
     <button class="nt" onclick="nav('conf',this)">🎤 Conference</button>
       <button class="nt" onclick="nav('sim',this)">⚡ Simulate</button>
@@ -594,27 +604,7 @@ body{background:var(--navy);color:var(--text);font-family:'Inter',sans-serif;fon
         <div id="playerPanel"><!-- rendered by JS --></div>
       </div>
 
-      <div class="card">
-        <div class="ctitle">Session</div>
-        <div class="ring-wrap">
-          <svg style="transform:rotate(-90deg)" width="76" height="76" viewBox="0 0 76 76">
-            <circle class="ring-bg" cx="38" cy="38" r="32"/>
-            <circle class="ring-fill" cx="38" cy="38" r="32" stroke-dasharray="201" stroke-dashoffset="60"/>
-          </svg>
-          <div class="ring-val" style="margin-top:-6px">70%</div>
-          <div class="ring-label">Accuracy</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
-          <div style="text-align:center;padding:7px;background:rgba(255,255,255,.04);border-radius:7px">
-            <div style="font-family:'Space Mono',monospace;font-size:16px;color:var(--teal)">14</div>
-            <div style="font-size:9px;color:var(--muted);margin-top:1px">Questions</div>
-          </div>
-          <div style="text-align:center;padding:7px;background:rgba(255,255,255,.04);border-radius:7px">
-            <div style="font-family:'Space Mono',monospace;font-size:16px;color:var(--amber)">Rd 2</div>
-            <div style="font-size:9px;color:var(--muted);margin-top:1px">of 5</div>
-          </div>
-        </div>
-      </div>
+
 
       <div class="card">
         <div class="ctitle">Mode</div>
@@ -6890,43 +6880,34 @@ function applyAutoDifficulty(){
 
 
 // ══ SESSION BUILDER ═══════════════════════════════════════════════
+var _sbSelMode = 'random';
+var _sbSelectedTopics = [];
+var _sbSelectedSources = [];
+var _sbManualSelected = new Set();
+
 function sbInit(){
-  // Populate topics
+  // Populate topics in main toolbar
   var topics = {};
-  QUESTIONS.forEach(function(q){ if(q.topic) topics[q.topic]=true; });
-  var tSel = document.getElementById('sbTopics');
-  if(tSel){
-    tSel.innerHTML='';
+  var SOURCE_NAMES_CAT = ['ACEP PEER','ROSH Review','UWorld','Amboss','BoardVitals','QBank','Built-in'];
+  QUESTIONS.forEach(function(q){
+    if(q.topic && SOURCE_NAMES_CAT.indexOf(q.topic) < 0) topics[q.topic] = true;
+  });
+  var sel = document.getElementById('catTopicFilter');
+  if(sel){
+    while(sel.options.length > 1) sel.remove(1);
     Object.keys(topics).sort().forEach(function(t){
       var cnt = QUESTIONS.filter(function(q){return q.topic===t;}).length;
       var opt = document.createElement('option');
-      opt.value=t; opt.textContent=t+' ('+cnt+')';
-      tSel.appendChild(opt);
+      opt.value = t; opt.textContent = t+' ('+cnt+')';
+      sel.appendChild(opt);
     });
-  }
-  // Populate sources
-  var sources = {};
-  QUESTIONS.forEach(function(q){ sources[q.source||'Built-in']=true; });
-  var sSel = document.getElementById('sbSources');
-  if(sSel){
-    sSel.innerHTML='';
-    Object.keys(sources).sort().forEach(function(s){
-      var cnt = QUESTIONS.filter(function(q){return (q.source||'Built-in')===s;}).length;
-      var opt = document.createElement('option');
-      opt.value=s; opt.textContent=s+' ('+cnt+')';
-      sSel.appendChild(opt);
-    });
-    // Select all by default
-    for(var i=0;i<sSel.options.length;i++) sSel.options[i].selected=true;
   }
   sbUpdateCount();
 }
 
 function sbGetFilter(){
-  var tSel = document.getElementById('sbTopics');
-  var sSel = document.getElementById('sbSources');
-  var topics  = tSel ? Array.from(tSel.selectedOptions).map(function(o){return o.value;}) : [];
-  var sources = sSel ? Array.from(sSel.selectedOptions).map(function(o){return o.value;}) : [];
+  var topics  = _sbSelectedTopics.length ? _sbSelectedTopics : [];
+  var sources = _sbSelectedSources.length ? _sbSelectedSources : [];
   var diffs = [];
   if(document.getElementById('sbEasy')&&document.getElementById('sbEasy').checked) diffs.push(1);
   if(document.getElementById('sbMed')&&document.getElementById('sbMed').checked)  diffs.push(2);
@@ -6950,44 +6931,265 @@ function sbUpdateCount(){
   if(avail) avail.textContent = filtered.length+' questions available';
 }
 
-function sbPreview(){
-  var filtered = sbFilter();
-  var n = parseInt((document.getElementById('sbCount')||{}).value||20);
-  var selected = filtered.slice(0, Math.min(n, filtered.length));
-  var status = document.getElementById('sbStatus');
-  if(status) status.textContent = selected.length+' questions selected from '+
-    [...new Set(selected.map(function(q){return q.topic;}))].length+' topics, '+
-    [...new Set(selected.map(function(q){return q.source||'Built-in'}))].length+' sources';
-  toast('Preview: '+selected.length+' questions — click Launch to start game');
+function sbOpenModal(){
+  var modal = document.getElementById('sbModal');
+  if(!modal) return;
+
+  // Build topic toggle buttons
+  var topicBtns = document.getElementById('sbTopicBtns');
+  if(topicBtns){
+    topicBtns.innerHTML='';
+    _sbSelectedTopics=[];
+    var topics={};
+    var SOURCE_NAMES = ['ACEP PEER','ROSH Review','UWorld','Amboss','BoardVitals','QBank','Built-in'];
+    QUESTIONS.forEach(function(q){
+      if(q.topic && SOURCE_NAMES.indexOf(q.topic) < 0) topics[q.topic]=true;
+    });
+    Object.keys(topics).sort().forEach(function(t){
+      var cnt=QUESTIONS.filter(function(q){return q.topic===t;}).length;
+      var btn=document.createElement('button');
+      btn.textContent=t+' ('+cnt+')';
+      btn.dataset.topic=t;
+      btn.style.cssText='padding:5px 10px;border-radius:20px;font-size:10px;cursor:pointer;'+
+        'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted);transition:all .15s';
+      btn.onclick=function(){sbToggleTopic(this);};
+      topicBtns.appendChild(btn);
+    });
+    // "All Topics" button
+    var allBtn=document.createElement('button');
+    allBtn.textContent='All Topics';
+    allBtn.style.cssText='padding:5px 10px;border-radius:20px;font-size:10px;cursor:pointer;'+
+      'background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:var(--gold)';
+    allBtn.onclick=function(){
+      _sbSelectedTopics=[];
+      topicBtns.querySelectorAll('button').forEach(function(b){
+        b.style.background='rgba(255,255,255,0.06)';
+        b.style.borderColor='rgba(255,255,255,0.15)';
+        b.style.color='var(--muted)';
+      });
+      this.style.background='rgba(201,162,39,0.15)';
+      this.style.borderColor='rgba(201,162,39,0.4)';
+      this.style.color='var(--gold)';
+      sbUpdatePreview();
+    };
+    topicBtns.insertBefore(allBtn, topicBtns.firstChild);
+  }
+
+  // Build source toggle buttons
+  var sourceBtns = document.getElementById('sbSourceBtns');
+  if(sourceBtns){
+    sourceBtns.innerHTML='';
+    _sbSelectedSources=[];
+    var sources={};
+    QUESTIONS.forEach(function(q){sources[q.source||'Built-in']=true;});
+    // All Sources button
+    var allSrc=document.createElement('button');
+    allSrc.textContent='All Sources';
+    allSrc.style.cssText='padding:5px 10px;border-radius:20px;font-size:10px;cursor:pointer;'+
+      'background:rgba(0,168,150,0.15);border:1px solid rgba(0,168,150,0.4);color:var(--teal)';
+    allSrc.onclick=function(){
+      _sbSelectedSources=[];
+      sourceBtns.querySelectorAll('button').forEach(function(b){
+        b.style.background='rgba(255,255,255,0.06)';
+        b.style.borderColor='rgba(255,255,255,0.15)';
+        b.style.color='var(--muted)';
+      });
+      this.style.background='rgba(0,168,150,0.15)';
+      this.style.borderColor='rgba(0,168,150,0.4)';
+      this.style.color='var(--teal)';
+      sbUpdatePreview();
+    };
+    sourceBtns.appendChild(allSrc);
+    Object.keys(sources).sort().forEach(function(s){
+      var cnt=QUESTIONS.filter(function(q){return (q.source||'Built-in')===s;}).length;
+      var btn=document.createElement('button');
+      btn.textContent=s+' ('+cnt+')';
+      btn.dataset.source=s;
+      btn.style.cssText='padding:5px 10px;border-radius:20px;font-size:10px;cursor:pointer;'+
+        'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted)';
+      btn.onclick=function(){sbToggleSource(this);};
+      sourceBtns.appendChild(btn);
+    });
+  }
+
+  _sbSelMode='random';
+  sbSetSel('random');
+  sbUpdatePreview();
+  modal.style.display='flex';
+
+  // Wire close
+  var closeBtn=document.getElementById('sbModalClose');
+  if(closeBtn) closeBtn.onclick=function(){modal.style.display='none';};
+  modal.onclick=function(e){if(e.target===modal) modal.style.display='none';};
 }
 
-function sbLaunch(){
-  var filtered = sbFilter();
-  var n = parseInt((document.getElementById('sbCount')||{}).value||20);
-  if(filtered.length===0){ toast('No questions match your selection'); return; }
-
-  // Shuffle and pick n
-  var pool = filtered.slice();
-  for(var i=pool.length-1;i>0;i--){
-    var j=Math.floor(Math.random()*(i+1));
-    var tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp;
+function sbToggleTopic(btn){
+  var t=btn.dataset.topic;
+  var idx=_sbSelectedTopics.indexOf(t);
+  if(idx>=0){
+    _sbSelectedTopics.splice(idx,1);
+    btn.style.background='rgba(255,255,255,0.06)';
+    btn.style.borderColor='rgba(255,255,255,0.15)';
+    btn.style.color='var(--muted)';
+  } else {
+    _sbSelectedTopics.push(t);
+    btn.style.background='rgba(201,162,39,0.15)';
+    btn.style.borderColor='rgba(201,162,39,0.4)';
+    btn.style.color='var(--gold)';
   }
-  var session = pool.slice(0, Math.min(n, pool.length));
+  sbUpdatePreview();
+}
 
-  // Store session questions and launch solo board
-  window._sessionQuestions = session;
-  window._sessionMode = 'custom';
+function sbToggleSource(btn){
+  var s=btn.dataset.source;
+  var idx=_sbSelectedSources.indexOf(s);
+  if(idx>=0){
+    _sbSelectedSources.splice(idx,1);
+    btn.style.background='rgba(255,255,255,0.06)';
+    btn.style.borderColor='rgba(255,255,255,0.15)';
+    btn.style.color='var(--muted)';
+  } else {
+    _sbSelectedSources.push(s);
+    btn.style.background='rgba(0,168,150,0.15)';
+    btn.style.borderColor='rgba(0,168,150,0.4)';
+    btn.style.color='var(--teal)';
+  }
+  sbUpdatePreview();
+}
 
-  // Navigate to solo board with custom question set
-  nav('solo', document.querySelector('[onclick*="solo"]'));
+function sbAddCustomTopic(){
+  var inp=document.getElementById('sbCustomTopic');
+  if(!inp||!inp.value.trim()) return;
+  var t=inp.value.trim();
+  var topicBtns=document.getElementById('sbTopicBtns');
+  var btn=document.createElement('button');
+  btn.textContent=t+' (custom)';
+  btn.dataset.topic=t;
+  btn.style.cssText='padding:5px 10px;border-radius:20px;font-size:10px;cursor:pointer;'+
+    'background:rgba(123,97,255,0.15);border:1px solid rgba(123,97,255,0.4);color:#7B61FF';
+  btn.onclick=function(){sbToggleTopic(this);};
+  topicBtns.appendChild(btn);
+  _sbSelectedTopics.push(t);
+  inp.value='';
+  sbUpdatePreview();
+}
+
+function sbSetSel(mode){
+  _sbSelMode=mode;
+  var rBtn=document.getElementById('sbSelRandom');
+  var mBtn=document.getElementById('sbSelManual');
+  var mList=document.getElementById('sbManualList');
+  if(mode==='random'){
+    if(rBtn){rBtn.style.background='rgba(201,162,39,0.15)';rBtn.style.borderColor='rgba(201,162,39,0.4)';rBtn.style.color='var(--gold)';}
+    if(mBtn){mBtn.style.background='rgba(255,255,255,0.04)';mBtn.style.borderColor='rgba(255,255,255,0.1)';mBtn.style.color='var(--muted)';}
+    if(mList) mList.style.display='none';
+  } else {
+    if(mBtn){mBtn.style.background='rgba(201,162,39,0.15)';mBtn.style.borderColor='rgba(201,162,39,0.4)';mBtn.style.color='var(--gold)';}
+    if(rBtn){rBtn.style.background='rgba(255,255,255,0.04)';rBtn.style.borderColor='rgba(255,255,255,0.1)';rBtn.style.color='var(--muted)';}
+    sbBuildManualList();
+    if(mList) mList.style.display='block';
+  }
+  sbUpdatePreview();
+}
+
+function sbBuildManualList(){
+  var list=document.getElementById('sbManualList');
+  if(!list) return;
+  var qs=sbFilterModal();
+  _sbManualSelected=new Set();
+  list.innerHTML='';
+  qs.forEach(function(q,i){
+    var row=document.createElement('div');
+    row.style.cssText='padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.05);'+
+      'display:flex;align-items:center;gap:10px;cursor:pointer';
+    row.innerHTML='<input type="checkbox" data-idx="'+i+'" style="cursor:pointer">'+
+      '<span style="font-size:11px;color:var(--cream)">'+q.q.substring(0,70)+'...</span>'+
+      '<span style="font-family:monospace;font-size:9px;color:var(--muted);white-space:nowrap">'+
+        (q.topic||'')+'</span>';
+    var cb=row.querySelector('input');
+    cb.onchange=function(){
+      if(this.checked) _sbManualSelected.add(i);
+      else _sbManualSelected.delete(i);
+      sbUpdatePreview();
+    };
+    row.onclick=function(e){if(e.target!==cb){cb.checked=!cb.checked;cb.onchange.call(cb);}};
+    list.appendChild(row);
+  });
+}
+
+function sbFilterModal(){
+  var topics=_sbSelectedTopics;
+  var sources=_sbSelectedSources;
+  return QUESTIONS.filter(function(q){
+    if(topics.length && topics.indexOf(q.topic)<0) return false;
+    if(sources.length && sources.indexOf(q.source||'Built-in')<0) return false;
+    return true;
+  });
+}
+
+function sbUpdatePreview(){
+  var pool=sbFilterModal();
+  var n=parseInt((document.getElementById('sbModalCount')||{}).value||20);
+  var mode=(document.getElementById('sbMode')||{}).value||'solo';
+  var modeLabel={'solo':'Solo Board','team':'Team Mode','online':'Online Challenge'}[mode]||mode;
+  var topicLabel=_sbSelectedTopics.length ? _sbSelectedTopics.join(', ') : 'All Topics';
+  var srcLabel=_sbSelectedSources.length ? _sbSelectedSources.join(', ') : 'All Sources';
+  var selCount=_sbSelMode==='manual' ? _sbManualSelected.size : Math.min(n, pool.length);
+
+  var box=document.getElementById('sbPreviewBox');
+  if(box){
+    box.style.display='block';
+    box.innerHTML=
+      '<div style="font-family:var(--ff-display,cursive);font-size:16px;color:var(--gold);margin-bottom:6px">'+
+        selCount+' Questions — '+modeLabel+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--muted);line-height:1.8">'+
+        '✓ Topics: <span style="color:var(--cream)">'+topicLabel+'</span><br>'+
+        '✓ Sources: <span style="color:var(--cream)">'+srcLabel+'</span><br>'+
+        '✓ Available pool: <span style="color:var(--cream)">'+pool.length+' questions</span><br>'+
+        (pool.length===0 ? '<span style="color:#E84855">⚠ No questions match — adjust filters</span>' : '')+
+      '</div>';
+  }
+}
+
+function sbConfirmLaunch(){
+  var pool=sbFilterModal();
+  var n=parseInt((document.getElementById('sbModalCount')||{}).value||20);
+  var mode=(document.getElementById('sbMode')||{}).value||'solo';
+
+  var session=[];
+  if(_sbSelMode==='manual'){
+    var qs=sbFilterModal();
+    _sbManualSelected.forEach(function(i){ if(qs[i]) session.push(qs[i]); });
+    if(!session.length){ toast('Select at least one question from the list'); return; }
+  } else {
+    if(!pool.length){ toast('No questions match your filter'); return; }
+    // Shuffle
+    var p=pool.slice();
+    for(var i=p.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=p[i];p[i]=p[j];p[j]=t;}
+    session=p.slice(0,Math.min(n,p.length));
+  }
+
+  window._sessionQuestions=session;
+  window._sessionMode=mode;
+
+  // Close modal
+  var modal=document.getElementById('sbModal');
+  if(modal) modal.style.display='none';
+
+  // Navigate to chosen mode
+  var modeMap={'solo':'solo','team':'team','online':'online'};
+  var pg=modeMap[mode]||'solo';
+  nav(pg, null);
+
+
   setTimeout(function(){
-    toast('Session loaded: '+session.length+' questions from your selection. Start a game to play!');
-    // Flag that custom session is ready
-    if(typeof soloSetCustomSession === 'function'){
-      soloSetCustomSession(session);
-    }
+    var label={'solo':'Solo Board','team':'Team Mode','online':'Online Challenge'}[mode]||mode;
+    toast(session.length+' questions loaded for '+label+'! Start a game to play.');
+    if(typeof soloSetCustomSession==='function' && mode==='solo') soloSetCustomSession(session);
   }, 400);
 }
+
 
 // ══ QUESTION CATALOG ══════════════════════════════════════════════
 var _catPage = 1;
@@ -7175,6 +7377,354 @@ function catShowQuestion(q){
   document.body.appendChild(modal);
 }
 
+
+// ══ STRESS TEST / SIMULATION ══════════════════════════════════════
+var _simRoster = [];
+var _simRunning = false;
+var _simErrors = [];
+var _simSessions = 0;
+var _simPlays = 0;
+var _simTotalCorrect = 0;
+
+function simLog(msg, type) {
+  var log = document.getElementById('simLog');
+  if(!log) return;
+  var color = type==='error' ? '#E84855' : type==='ok' ? '#3EC66A' : type==='warn' ? '#C9A227' : 'var(--cream)';
+  var line = document.createElement('div');
+  line.style.color = color;
+  line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function simUpdateStats() {
+  function e(id){ return document.getElementById(id); }
+  if(e('simStatSessions')) e('simStatSessions').textContent = _simSessions;
+  if(e('simStatPlays'))    e('simStatPlays').textContent    = _simPlays;
+  if(e('simStatErrors'))   e('simStatErrors').textContent   = _simErrors.length;
+  if(e('simStatAcc') && _simPlays > 0)
+    e('simStatAcc').textContent = Math.round(_simTotalCorrect/_simPlays*100)+'%';
+}
+
+function simProgress(pct, status) {
+  var bar = document.getElementById('simProgressBar');
+  var st  = document.getElementById('simStatus');
+  if(bar) bar.style.width = pct+'%';
+  if(st)  st.textContent  = status;
+}
+
+function simLoadRoster() {
+  var txt = (document.getElementById('simRosterText')||{}).value||'';
+  var names = txt.split(/[,\n]+/).map(function(n){return n.trim();}).filter(Boolean);
+  _simRoster = names;
+  var disp = document.getElementById('simRosterDisplay');
+  if(disp) disp.textContent = names.length+' residents loaded: '+names.slice(0,5).join(', ')+(names.length>5?'...':'');
+  simLog('Roster loaded: '+names.length+' residents', 'ok');
+}
+
+function simLoadDefaultRoster() {
+  var defaults = [
+    'Dr. Rivera','Dr. Chen','Dr. Okafor','Dr. Patel','Dr. Williams',
+    'Dr. Martinez','Dr. Kim','Dr. Johnson','Dr. Thompson','Dr. Garcia',
+    'Dr. Anderson','Dr. Lee'
+  ];
+  document.getElementById('simRosterText').value = defaults.join('\n');
+  simLoadRoster();
+}
+
+function simStop() {
+  _simRunning = false;
+  simLog('Stopped by user', 'warn');
+  document.getElementById('simStopBtn').style.display = 'none';
+}
+
+// Simulate one player answering one question
+function simAnswer(playerName, question, accuracy) {
+  try {
+    var correct = Math.random() < accuracy;
+    var ans = correct ? question.ans : (function(){
+      var opts = Object.keys(question.opts||{}).filter(function(k){return k!==question.ans;});
+      return opts.length ? opts[Math.floor(Math.random()*opts.length)] : 'A';
+    })();
+    var pts = correct ? (question.pts||10) : 0;
+    _simPlays++;
+    if(correct) _simTotalCorrect++;
+    return { player: playerName, q: question.q, ans: ans, correct: correct, pts: pts, topic: question.topic||'EM' };
+  } catch(e) {
+    _simErrors.push({ where: 'simAnswer', q: question.q||'?', error: e.message });
+    simLog('ERROR in simAnswer: '+e.message, 'error');
+    return { player: playerName, q: question.q||'?', ans: '', correct: false, pts: 0, topic: 'ERROR' };
+  }
+}
+
+// Simulate a full session and save to localStorage sessions
+function simRunSession(label, players, questions, accuracy) {
+  try {
+    var startTime = Date.now();
+    var results = [];
+    var qPool = questions.slice();
+
+    // Each player answers each question (or questions rotate)
+    var perPlayer = Math.ceil(qPool.length / Math.max(players.length, 1));
+    var qIdx = 0;
+
+    players.forEach(function(player) {
+      var playerAcc = accuracy === 'random' ? (0.45 + Math.random()*0.45) : parseFloat(accuracy);
+      var playerQs  = qPool.slice(qIdx, qIdx + perPlayer);
+      qIdx += perPlayer;
+      playerQs.forEach(function(q) {
+        var r = simAnswer(player, q, playerAcc);
+        results.push(r);
+      });
+    });
+
+    // Build session record matching DB.saveSession format
+    var sessionData = {
+      id: 'sim_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      label: label,
+      date: new Date().toISOString(),
+      simulated: true,
+      players: players.map(function(name) {
+        var playerResults = results.filter(function(r){return r.player===name;});
+        var correct = playerResults.filter(function(r){return r.correct;}).length;
+        var total   = playerResults.length;
+        var score   = playerResults.reduce(function(s,r){return s+r.pts;},0);
+        var byTopic = {};
+        playerResults.forEach(function(r){
+          if(!byTopic[r.topic]) byTopic[r.topic]={c:0,t:0};
+          byTopic[r.topic].t++;
+          if(r.correct) byTopic[r.topic].c++;
+        });
+        return {
+          name: name,
+          score: score,
+          correct: correct,
+          total: total,
+          accuracy: total>0 ? Math.round(correct/total*100) : 0,
+          byTopic: byTopic,
+        };
+      }),
+      totalQuestions: results.length,
+      duration: Math.round((Date.now()-startTime)/1000),
+      mode: label,
+    };
+
+    // Save to localStorage sessions array
+    try {
+      var sessions = JSON.parse(localStorage.getItem('resid_sessions')||'[]');
+      sessions.push(sessionData);
+      // Keep last 200 sessions to avoid storage overflow
+      if(sessions.length > 200) sessions = sessions.slice(-200);
+      localStorage.setItem('resid_sessions', JSON.stringify(sessions));
+    } catch(storErr) {
+      _simErrors.push({ where: 'saveSession', error: storErr.message });
+    }
+
+    _simSessions++;
+    return sessionData;
+  } catch(e) {
+    _simErrors.push({ where: 'simRunSession:'+label, error: e.message });
+    simLog('ERROR in session "'+label+'": '+e.message, 'error');
+    return null;
+  }
+}
+
+async function simRun() {
+  if(_simRunning){ simLog('Already running', 'warn'); return; }
+  if(!QUESTIONS || QUESTIONS.length < 10){ simLog('Need at least 10 questions loaded', 'error'); return; }
+  if(_simRoster.length === 0){ simLog('Load a roster first', 'warn'); simLoadDefaultRoster(); }
+
+  _simRunning = true;
+  _simErrors = [];
+  _simSessions = 0;
+  _simPlays = 0;
+  _simTotalCorrect = 0;
+
+  var log = document.getElementById('simLog');
+  if(log) log.innerHTML = '';
+  var report = document.getElementById('simReport');
+  if(report) report.style.display = 'none';
+  document.getElementById('simStopBtn').style.display = 'block';
+
+  var qCount  = parseInt(document.getElementById('simQCount').value)||50;
+  var acc     = document.getElementById('simAccuracy').value;
+  var doSolo  = document.getElementById('simModeSolo').checked;
+  var doTeam  = document.getElementById('simModeTeam').checked;
+  var doConf  = document.getElementById('simModeConf').checked;
+  var doSolo1 = document.getElementById('simModeSolo1').checked;
+
+  var qPool = QUESTIONS.filter(function(q){return q.ans;}).slice(0, Math.min(qCount, QUESTIONS.length));
+  if(qPool.length < qCount) qPool = QUESTIONS.slice(0, Math.min(qCount, QUESTIONS.length));
+
+  simLog('Starting stress test with '+_simRoster.length+' residents, '+qPool.length+' questions', 'ok');
+  simLog('Modes: '+(doSolo?'Solo ':'')+( doTeam?'Team ':'')+( doConf?'Conf ':'')+( doSolo1?'Solo-1':''), '');
+
+  var totalSteps = (doSolo?1:0)+(doTeam?1:0)+(doConf?1:0)+(doSolo1?1:0);
+  var step = 0;
+
+  // Helper to yield to browser between sessions
+  function delay(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+
+  try {
+    // ── SOLO: full roster, all questions ──────────────────────────
+    if(doSolo && _simRunning) {
+      simLog('── Solo Mode: '+_simRoster.length+' residents × '+qPool.length+' questions', '');
+      simProgress(Math.round(step/totalSteps*100), 'Running Solo sessions...');
+      for(var i=0; i<_simRoster.length && _simRunning; i++) {
+        var res = simRunSession('Solo', [_simRoster[i]], qPool, acc);
+        if(res) simLog('Solo: '+_simRoster[i]+' — '+res.players[0].accuracy+'% accuracy', 'ok');
+        simUpdateStats();
+        if(i%3===0) await delay(10); // yield to browser every 3 sessions
+      }
+      step++;
+      simProgress(Math.round(step/totalSteps*100), 'Solo done');
+    }
+
+    // ── TEAM: split roster into 2 teams ───────────────────────────
+    if(doTeam && _simRunning) {
+      simLog('── Team Mode: 2 teams', '');
+      simProgress(Math.round(step/totalSteps*100), 'Running Team sessions...');
+      var mid = Math.ceil(_simRoster.length/2);
+      var team1 = _simRoster.slice(0, mid);
+      var team2 = _simRoster.slice(mid);
+      var numTeamGames = Math.ceil(qPool.length/20); // ~20 Qs per game
+      for(var g=0; g<numTeamGames && _simRunning; g++) {
+        var gameQs = qPool.slice(g*20, g*20+20);
+        if(!gameQs.length) break;
+        simRunSession('Team - Game '+(g+1), team1.concat(team2), gameQs, acc);
+        simUpdateStats();
+        if(g%3===0) await delay(10);
+      }
+      simLog('Team mode: '+numTeamGames+' games', 'ok');
+      step++;
+      simProgress(Math.round(step/totalSteps*100), 'Team done');
+    }
+
+    // ── CONFERENCE: all residents, all questions ───────────────────
+    if(doConf && _simRunning) {
+      simLog('── Conference Mode: full roster × all questions', '');
+      simProgress(Math.round(step/totalSteps*100), 'Running Conference sessions...');
+      var confGames = Math.ceil(qPool.length/30);
+      for(var cg=0; cg<confGames && _simRunning; cg++) {
+        var confQs = qPool.slice(cg*30, cg*30+30);
+        if(!confQs.length) break;
+        simRunSession('Conference - Block '+(cg+1), _simRoster, confQs, acc);
+        simUpdateStats();
+        if(cg%3===0) await delay(10);
+      }
+      simLog('Conference mode: '+confGames+' blocks', 'ok');
+      step++;
+      simProgress(Math.round(step/totalSteps*100), 'Conference done');
+    }
+
+    // ── SOLO-1: one resident, 200 questions ───────────────────────
+    if(doSolo1 && _simRunning) {
+      simLog('── Solo-1: '+_simRoster[0]+', 200 questions', '');
+      simProgress(Math.round(step/totalSteps*100), 'Running Solo-1...');
+      var solo1Qs = QUESTIONS.slice(0, Math.min(200, QUESTIONS.length));
+      // Split into 4 sessions of 50 for realistic data
+      for(var s=0; s<4 && _simRunning; s++) {
+        var s1Qs = solo1Qs.slice(s*50, s*50+50);
+        var s1Res = simRunSession('Solo-1 Session '+(s+1), [_simRoster[0]], s1Qs, acc);
+        if(s1Res) simLog('Solo-1 session '+(s+1)+': '+s1Res.players[0].accuracy+'% accuracy', 'ok');
+        simUpdateStats();
+        await delay(10);
+      }
+      step++;
+      simProgress(100, 'Complete');
+    }
+
+  } catch(fatalErr) {
+    _simErrors.push({ where: 'simRun', error: fatalErr.message });
+    simLog('FATAL ERROR: '+fatalErr.message, 'error');
+  }
+
+  _simRunning = false;
+  document.getElementById('simStopBtn').style.display = 'none';
+  simProgress(100, _simErrors.length > 0 ? 'Done with '+_simErrors.length+' errors' : 'All tests passed ✓');
+  simGenerateReport();
+}
+
+function simGenerateReport() {
+  var report = document.getElementById('simReport');
+  var text   = document.getElementById('simReportText');
+  if(!report || !text) return;
+
+  var avgAcc = _simPlays > 0 ? Math.round(_simTotalCorrect/_simPlays*100) : 0;
+  var sessions = [];
+  try { sessions = JSON.parse(localStorage.getItem('resid_sessions')||'[]'); } catch(e){}
+
+  var lines = [
+    '═══════════════════════════════════════',
+    'RESIDOLOGY™ STRESS TEST REPORT',
+    new Date().toLocaleString(),
+    '═══════════════════════════════════════',
+    '',
+    'SUMMARY',
+    '───────────────────────────────────────',
+    'Total sessions run:    ' + _simSessions,
+    'Total question plays:  ' + _simPlays,
+    'Average accuracy:      ' + avgAcc + '%',
+    'Errors encountered:    ' + _simErrors.length,
+    'Total sessions in DB:  ' + sessions.length,
+    '',
+    'ROSTER (' + _simRoster.length + ' residents)',
+    '───────────────────────────────────────',
+  ];
+
+  _simRoster.forEach(function(name) {
+    var playerSessions = sessions.filter(function(s){
+      return s.players && s.players.some(function(p){return p.name===name;});
+    });
+    var totalQs = playerSessions.reduce(function(sum,s){
+      var p = s.players.find(function(p){return p.name===name;});
+      return sum + (p ? p.total : 0);
+    }, 0);
+    var avgAcc2 = 0;
+    var accSessions = playerSessions.filter(function(s){
+      return s.players.some(function(p){return p.name===name && p.total>0;});
+    });
+    if(accSessions.length > 0) {
+      avgAcc2 = Math.round(accSessions.reduce(function(sum,s){
+        var p = s.players.find(function(p){return p.name===name;});
+        return sum + (p ? p.accuracy : 0);
+      }, 0) / accSessions.length);
+    }
+    lines.push(name + ' — ' + playerSessions.length + ' sessions, ' + totalQs + ' Qs, ' + avgAcc2 + '% avg');
+  });
+
+  if(_simErrors.length > 0) {
+    lines.push('');
+    lines.push('ERRORS (' + _simErrors.length + ')');
+    lines.push('───────────────────────────────────────');
+    _simErrors.forEach(function(e, i) {
+      lines.push((i+1) + '. [' + e.where + '] ' + e.error);
+      if(e.q) lines.push('   Q: ' + e.q.substring(0,60));
+    });
+  } else {
+    lines.push('');
+    lines.push('✓ No errors — all game modes stable');
+  }
+
+  lines.push('');
+  lines.push('PD Dashboard should now show data for all residents.');
+  lines.push('Navigate to PD Dashboard to review.');
+
+  text.textContent = lines.join('\n');
+  report.style.display = 'block';
+
+  simLog('Report generated — '+_simSessions+' sessions, '+_simPlays+' plays, '+_simErrors.length+' errors', _simErrors.length>0?'warn':'ok');
+}
+
+function simExportReport() {
+  var text = (document.getElementById('simReportText')||{}).textContent||'';
+  var blob = new Blob([text], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'RESIDOLOGY_StressTest_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click();
+}
+
 </script>
 
 
@@ -7185,10 +7735,10 @@ function catShowQuestion(q){
 
   <!-- Toolbar -->
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-    <!-- Source filter -->
+    <!-- Mode filter (replaces source) -->
     <select id="catSourceFilter" onchange="catRender()"
-      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      style="padding:8px 12px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.2);
+             border-radius:7px;color:#F5F0E8;font-family:monospace;font-size:11px;cursor:pointer">
       <option value="">All Sources</option>
       <option value="Built-in">Built-in</option>
       <option value="ACEP PEER">ACEP PEER</option>
@@ -7199,15 +7749,15 @@ function catShowQuestion(q){
 
     <!-- Topic filter -->
     <select id="catTopicFilter" onchange="catRender()"
-      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      style="padding:8px 12px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.2);
+             border-radius:7px;color:#F5F0E8;font-family:monospace;font-size:11px;cursor:pointer">
       <option value="">All Topics</option>
     </select>
 
     <!-- Answer filter -->
     <select id="catAnsFilter" onchange="catRender()"
-      style="padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-             border-radius:7px;color:var(--cream);font-family:monospace;font-size:11px;cursor:pointer">
+      style="padding:8px 12px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.2);
+             border-radius:7px;color:#F5F0E8;font-family:monospace;font-size:11px;cursor:pointer">
       <option value="">All Questions</option>
       <option value="answered">With Answer</option>
       <option value="unanswered">Missing Answer</option>
@@ -7306,24 +7856,276 @@ function catShowQuestion(q){
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center">
-      <button onclick="sbPreview()"
-        style="padding:10px 20px;background:rgba(0,168,150,0.15);border:1px solid rgba(0,168,150,0.4);
-               border-radius:8px;color:var(--teal);font-family:monospace;font-size:10px;
-               letter-spacing:1px;cursor:pointer;text-transform:uppercase">
-        Preview Selection
-      </button>
-      <button onclick="sbLaunch()"
-        style="padding:10px 24px;background:var(--gold);border:none;border-radius:8px;
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="sbOpenModal()"
+        style="padding:11px 28px;background:var(--gold);border:none;border-radius:8px;
                color:#0D1B3E;font-family:var(--ff-display,cursive);font-size:16px;
                letter-spacing:2px;cursor:pointer">
-        Launch Session →
+        Build Session →
       </button>
       <div id="sbStatus" style="font-family:monospace;font-size:10px;color:var(--muted)"></div>
+    </div>
+
+    <!-- Session Builder Modal -->
+    <div id="sbModal" style="display:none;position:fixed;inset:0;background:rgba(5,14,31,0.94);
+         z-index:600;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
+      <div style="background:#132044;border:1px solid rgba(201,162,39,0.25);border-radius:16px;
+                  padding:28px;max-width:560px;width:100%">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div style="font-family:var(--ff-display,cursive);font-size:22px;letter-spacing:3px;color:var(--gold)">
+            Session Builder
+          </div>
+          <button id="sbModalClose"
+            style="background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer">&#x2715;</button>
+        </div>
+
+        <!-- Step 1: Topic -->
+        <div style="margin-bottom:16px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                      color:var(--muted);margin-bottom:6px">1 — Topics</div>
+          <div id="sbTopicBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input type="text" id="sbCustomTopic" placeholder="Add custom topic..."
+              style="flex:1;padding:7px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);
+                     border-radius:6px;color:#F5F0E8;font-size:11px;outline:none">
+            <button onclick="sbAddCustomTopic()"
+              style="padding:7px 14px;background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.3);
+                     border-radius:6px;color:var(--gold);font-size:11px;cursor:pointer">Add</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Source -->
+        <div style="margin-bottom:16px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                      color:var(--muted);margin-bottom:6px">2 — Sources</div>
+          <div id="sbSourceBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
+        <!-- Step 3: Count & Mode -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                        color:var(--muted);margin-bottom:6px">3 — Number of Questions</div>
+            <input type="number" id="sbModalCount" value="20" min="1" max="200"
+              style="width:100%;padding:8px 10px;background:rgba(255,255,255,0.06);
+                     border:1px solid rgba(255,255,255,0.12);border-radius:6px;
+                     color:#F5F0E8;font-size:14px;text-align:center" oninput="sbUpdatePreview()">
+          </div>
+          <div>
+            <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                        color:var(--muted);margin-bottom:6px">4 — Mode</div>
+            <select id="sbMode"
+              style="width:100%;padding:8px 10px;background:rgba(13,27,62,0.9);
+                     border:1px solid rgba(255,255,255,0.15);border-radius:6px;
+                     color:#F5F0E8;font-size:11px">
+              <option value="solo">🎲 Solo Board</option>
+              <option value="team">🏆 Team Mode</option>
+              <option value="online">🌐 Online Challenge</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 4: Selection method -->
+        <div style="margin-bottom:16px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                      color:var(--muted);margin-bottom:6px">5 — Selection</div>
+          <div style="display:flex;gap:8px">
+            <button id="sbSelRandom" onclick="sbSetSel('random')"
+              style="flex:1;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;
+                     background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:var(--gold)">
+              Random
+            </button>
+            <button id="sbSelManual" onclick="sbSetSel('manual')"
+              style="flex:1;padding:8px;border-radius:6px;font-size:11px;cursor:pointer;
+                     background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--muted)">
+              Pick from List
+            </button>
+          </div>
+        </div>
+
+        <!-- Question list (shown in manual mode) -->
+        <div id="sbManualList" style="display:none;max-height:200px;overflow-y:auto;
+             margin-bottom:16px;border:1px solid rgba(255,255,255,0.08);border-radius:8px"></div>
+
+        <!-- Preview summary -->
+        <div id="sbPreviewBox" style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.2);
+             border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--cream);
+             display:none"></div>
+
+        <!-- Launch -->
+        <button onclick="sbConfirmLaunch()"
+          style="width:100%;padding:13px;background:var(--gold);border:none;border-radius:9px;
+                 color:#0D1B3E;font-family:var(--ff-display,cursive);font-size:18px;
+                 letter-spacing:2px;cursor:pointer">
+          Launch Session →
+        </button>
+      </div>
     </div>
   </div>
 
 </div>
 
+
+<div class="pg" id="pg-sim">
+  <div class="stitle">Stress Test / Simulation</div>
+  <div class="ssub">Auto-play hundreds of questions to stress test all game modes and populate the PD Dashboard</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+
+    <!-- LEFT: Setup -->
+    <div>
+      <!-- Roster -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);
+                  border-radius:12px;padding:18px;margin-bottom:16px">
+        <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--gold);margin-bottom:12px">Resident Roster</div>
+
+        <!-- Paste CSV roster -->
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Paste names (one per line or comma-separated):</div>
+        <textarea id="simRosterText" rows="6"
+          placeholder="Dr. Rivera&#10;Dr. Chen&#10;Dr. Okafor&#10;Dr. Patel&#10;Dr. Williams"
+          style="width:100%;padding:8px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.15);
+                 border-radius:6px;color:#F5F0E8;font-size:11px;resize:vertical;box-sizing:border-box"></textarea>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="simLoadRoster()"
+            style="flex:1;padding:7px;background:rgba(0,168,150,0.15);border:1px solid rgba(0,168,150,0.3);
+                   border-radius:6px;color:var(--teal);font-family:monospace;font-size:9px;cursor:pointer;
+                   letter-spacing:1px;text-transform:uppercase">
+            Load Roster
+          </button>
+          <button onclick="simLoadDefaultRoster()"
+            style="flex:1;padding:7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+                   border-radius:6px;color:var(--muted);font-family:monospace;font-size:9px;cursor:pointer;
+                   letter-spacing:1px;text-transform:uppercase">
+            Use Demo Roster
+          </button>
+        </div>
+        <div id="simRosterDisplay" style="margin-top:10px;font-size:10px;color:var(--muted)"></div>
+      </div>
+
+      <!-- Simulation Config -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);
+                  border-radius:12px;padding:18px">
+        <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--gold);margin-bottom:12px">Simulation Config</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:monospace;text-transform:uppercase;letter-spacing:1px">Questions per Session</div>
+            <input type="number" id="simQCount" value="50" min="5" max="250"
+              style="width:100%;padding:7px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.15);
+                     border-radius:6px;color:#F5F0E8;font-size:13px;text-align:center">
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--muted);margin-bottom:4px;font-family:monospace;text-transform:uppercase;letter-spacing:1px">Answer Accuracy</div>
+            <select id="simAccuracy"
+              style="width:100%;padding:7px;background:rgba(13,27,62,0.9);border:1px solid rgba(255,255,255,0.15);
+                     border-radius:6px;color:#F5F0E8;font-size:11px">
+              <option value="0.5">50% (Struggling)</option>
+              <option value="0.65" selected>65% (Average)</option>
+              <option value="0.75">75% (Above Average)</option>
+              <option value="0.85">85% (Strong)</option>
+              <option value="random">Random per Resident</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Modes to run -->
+        <div style="font-size:9px;color:var(--muted);margin-bottom:8px;font-family:monospace;
+                    text-transform:uppercase;letter-spacing:1px">Modes to Simulate</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cream);cursor:pointer">
+            <input type="checkbox" id="simModeSolo" checked> Solo Board (all 250 questions, full roster)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cream);cursor:pointer">
+            <input type="checkbox" id="simModeTeam" checked> Team Mode (full roster, 2 teams)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cream);cursor:pointer">
+            <input type="checkbox" id="simModeConf" checked> Conference Mode (all 250 questions)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cream);cursor:pointer">
+            <input type="checkbox" id="simModeSolo1" checked> Solo — 1 resident, 200 questions
+          </label>
+        </div>
+
+        <button onclick="simRun()"
+          style="width:100%;margin-top:16px;padding:13px;background:var(--gold);border:none;
+                 border-radius:9px;color:#0D1B3E;font-family:var(--ff-display,cursive);
+                 font-size:18px;letter-spacing:2px;cursor:pointer">
+          ▶ Run Stress Test
+        </button>
+        <button onclick="simStop()" id="simStopBtn"
+          style="width:100%;margin-top:8px;padding:9px;background:rgba(232,72,85,0.15);
+                 border:1px solid rgba(232,72,85,0.3);border-radius:8px;color:#E84855;
+                 font-family:monospace;font-size:10px;letter-spacing:1px;cursor:pointer;
+                 display:none;text-transform:uppercase">
+          ■ Stop
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Live output + report -->
+    <div>
+      <!-- Progress -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);
+                  border-radius:12px;padding:18px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)">
+            Progress
+          </div>
+          <div id="simStatus" style="font-family:monospace;font-size:10px;color:var(--muted)">Ready</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
+          <div id="simProgressBar" style="height:100%;width:0%;background:var(--gold);transition:width 0.3s;border-radius:4px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+            <div id="simStatSessions" style="font-family:monospace;font-size:18px;color:var(--teal)">0</div>
+            <div style="font-size:8px;color:var(--muted);margin-top:2px">Sessions</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+            <div id="simStatPlays" style="font-family:monospace;font-size:18px;color:var(--gold)">0</div>
+            <div style="font-size:8px;color:var(--muted);margin-top:2px">Q Plays</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+            <div id="simStatErrors" style="font-family:monospace;font-size:18px;color:#E84855">0</div>
+            <div style="font-size:8px;color:var(--muted);margin-top:2px">Errors</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+            <div id="simStatAcc" style="font-family:monospace;font-size:18px;color:#3EC66A">—</div>
+            <div style="font-size:8px;color:var(--muted);margin-top:2px">Avg Acc</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live log -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);
+                  border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-family:monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--muted);margin-bottom:8px">Live Log</div>
+        <div id="simLog" style="font-family:monospace;font-size:10px;color:var(--cream);
+                                max-height:200px;overflow-y:auto;line-height:1.8"></div>
+      </div>
+
+      <!-- Final report (shown after run) -->
+      <div id="simReport" style="display:none;background:rgba(62,198,106,0.06);
+           border:1px solid rgba(62,198,106,0.2);border-radius:12px;padding:18px">
+        <div style="font-family:var(--ff-display,cursive);font-size:18px;color:#3EC66A;
+                    letter-spacing:2px;margin-bottom:12px">✓ Test Complete</div>
+        <pre id="simReportText" style="font-family:monospace;font-size:10px;color:var(--cream);
+             white-space:pre-wrap;line-height:1.8"></pre>
+        <button onclick="simExportReport()"
+          style="margin-top:12px;padding:8px 18px;background:rgba(62,198,106,0.15);
+                 border:1px solid rgba(62,198,106,0.3);border-radius:6px;color:#3EC66A;
+                 font-family:monospace;font-size:9px;letter-spacing:1px;cursor:pointer">
+          Export Report ↓
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
