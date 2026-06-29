@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0D1B3E">
+<title>RESIDOLOGY™</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --navy:   #0D1B3E;
+  --gold:   #C9A227;
+  --teal:   #00A896;
+  --cream:  #F5F0E8;
+  --green:  #3EC66A;
+  --red:    #E84855;
+  --purple: #7B61FF;
+  --muted:  rgba(245,240,232,0.5);
+  --card:   rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.12);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--navy);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  color: var(--cream);
+  touch-action: manipulation;
+}
+
+/* ── SCREENS ────────────────────────────────────────────────────── */
+.screen { display:none; position:absolute; inset:0; }
+.screen.active { display:flex; flex-direction:column; }
+
+/* ── SETUP SCREEN ───────────────────────────────────────────────── */
+#s-setup {
+  background: linear-gradient(160deg, #0D1B3E 0%, #1A2E5A 50%, #0D1B3E 100%);
+  align-items: center; justify-content: center; padding: 24px;
+}
+.setup-logo {
+  font-size: 38px; font-weight: 800; letter-spacing: 3px;
+  color: var(--gold); margin-bottom: 4px; text-align: center;
+}
+.setup-sub {
+  font-size: 12px; letter-spacing: 2px; color: var(--teal);
+  text-transform: uppercase; text-align: center; margin-bottom: 40px;
+}
+.setup-card {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 24px; width: 100%; max-width: 340px;
+}
+.setup-label {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+.setup-input {
+  width: 100%; padding: 14px 16px; background: rgba(13,27,62,0.8);
+  border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px;
+  color: var(--cream); font-size: 17px; outline: none; margin-bottom: 20px;
+  font-family: inherit;
+}
+.setup-input:focus { border-color: var(--gold); }
+.setup-input::placeholder { color: rgba(245,240,232,0.35); }
+
+.q-count-row {
+  display: flex; gap: 8px; margin-bottom: 24px;
+}
+.q-count-btn {
+  flex: 1; padding: 12px 4px; background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.12); border-radius: 10px;
+  color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.q-count-btn.sel {
+  background: rgba(201,162,39,0.15); border-color: var(--gold); color: var(--gold);
+}
+
+.btn-start {
+  width: 100%; padding: 18px; background: var(--gold); border: none;
+  border-radius: 14px; color: #0D1B3E; font-size: 18px; font-weight: 800;
+  letter-spacing: 1px; cursor: pointer; transition: transform .1s, opacity .1s;
+}
+.btn-start:active { transform: scale(0.97); opacity: 0.9; }
+
+/* ── GAME SCREEN ─────────────────────────────────────────────────── */
+#s-game { background: var(--navy); }
+
+/* Score bar */
+.score-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(var(--safe-top) + 8px) 16px 8px;
+  background: rgba(13,27,62,0.95); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; min-height: 52px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.score-name { font-size: 15px; font-weight: 700; color: var(--cream); }
+.score-sq { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.score-pts { font-size: 28px; font-weight: 800; color: var(--gold); line-height: 1; }
+.score-pts-lbl { font-size: 9px; color: var(--muted); text-align: right; letter-spacing: 1px; }
+.round-badge {
+  background: rgba(0,168,150,0.15); border: 1px solid rgba(0,168,150,0.3);
+  border-radius: 20px; padding: 4px 10px; font-size: 10px;
+  color: var(--teal); letter-spacing: 1px; font-weight: 600;
+}
+
+/* Board area */
+.board-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 8px; overflow: hidden; position: relative;
+}
+.board-svg { width: 100%; height: 100%; max-width: 440px; max-height: 440px; }
+
+/* Dice area */
+.dice-area {
+  padding: 12px 16px calc(var(--safe-bot) + 12px);
+  background: rgba(13,27,62,0.95); border-top: 1px solid var(--border);
+  flex-shrink: 0; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.dice-row { display: flex; align-items: center; gap: 12px; justify-content: center; }
+.die {
+  width: 56px; height: 56px; background: var(--cream); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 900; color: var(--navy);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  transition: transform .1s;
+}
+.die.rolling { animation: dieRoll .08s ease-in-out infinite alternate; }
+@keyframes dieRoll { from { transform: rotate(-5deg) scale(0.95); } to { transform: rotate(5deg) scale(1.05); } }
+
+.btn-roll {
+  flex: 1; max-width: 200px; padding: 16px; background: var(--gold);
+  border: none; border-radius: 14px; color: #0D1B3E;
+  font-size: 17px; font-weight: 800; letter-spacing: 1px; cursor: pointer;
+  transition: transform .1s, opacity .1s;
+}
+.btn-roll:active { transform: scale(0.97); opacity: 0.9; }
+.btn-roll:disabled { opacity: 0.4; }
+
+.sq-info {
+  text-align: center; margin-top: 8px; font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── QUESTION MODAL ──────────────────────────────────────────────── */
+#q-modal {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(5,14,31,0.85);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+#q-modal.show { opacity: 1; pointer-events: all; }
+.q-sheet {
+  width: 100%; background: #132044;
+  border-radius: 20px 20px 0 0;
+  padding: 0 0 calc(var(--safe-bot) + 16px);
+  max-height: 90vh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(0.32,0.72,0,1);
+}
+#q-modal.show .q-sheet { transform: translateY(0); }
+
+.q-handle {
+  width: 36px; height: 4px; background: rgba(255,255,255,0.2);
+  border-radius: 2px; margin: 12px auto 16px;
+}
+.q-meta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px 12px; flex-wrap: wrap;
+}
+.q-tag {
+  padding: 4px 10px; border-radius: 20px; font-size: 10px;
+  font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+}
+.q-tag.topic { background: rgba(0,168,150,0.15); color: var(--teal); border: 1px solid rgba(0,168,150,0.25); }
+.q-tag.pts   { background: rgba(201,162,39,0.15); color: var(--gold); border: 1px solid rgba(201,162,39,0.25); }
+.q-tag.sq    { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border); }
+
+.q-timer-bar {
+  height: 3px; background: rgba(255,255,255,0.08);
+  margin: 0 16px 16px; border-radius: 2px; overflow: hidden;
+}
+.q-timer-fill {
+  height: 100%; background: var(--gold); border-radius: 2px;
+  transition: width 1s linear, background .5s;
+}
+
+.q-stem {
+  padding: 0 16px 16px; font-size: 16px; line-height: 1.55;
+  color: var(--cream); font-weight: 500;
+}
+.q-choices { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.q-choice {
+  padding: 14px 16px; background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px;
+  font-size: 15px; color: var(--cream); cursor: pointer;
+  transition: all .15s; display: flex; align-items: flex-start; gap: 12px;
+  text-align: left;
+}
+.q-choice:active { transform: scale(0.98); }
+.q-choice.correct { background: rgba(62,198,106,0.15); border-color: var(--green); color: var(--green); }
+.q-choice.wrong   { background: rgba(232,72,85,0.12);  border-color: var(--red);   color: var(--red);   }
+.q-choice.reveal  { background: rgba(62,198,106,0.08); border-color: rgba(62,198,106,0.3); }
+.q-choice-letter {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.08); display: flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700; margin-top: 1px;
+}
+.q-choice.correct .q-choice-letter { background: var(--green); color: #0D1B3E; }
+.q-choice.wrong   .q-choice-letter { background: var(--red); color: white; }
+.q-choice.reveal  .q-choice-letter { background: rgba(62,198,106,0.4); }
+
+.q-feedback {
+  margin: 8px 16px; padding: 12px 14px; border-radius: 10px;
+  font-size: 14px; display: none; font-weight: 600;
+}
+.q-feedback.correct { background: rgba(62,198,106,0.12); color: var(--green); display: block; }
+.q-feedback.wrong   { background: rgba(232,72,85,0.1);   color: var(--red);   display: block; }
+
+.btn-next {
+  margin: 12px 16px 0; width: calc(100% - 32px); padding: 16px;
+  background: var(--gold); border: none; border-radius: 14px;
+  color: #0D1B3E; font-size: 16px; font-weight: 800; cursor: pointer;
+  display: none; transition: transform .1s;
+}
+.btn-next:active { transform: scale(0.98); }
+.btn-next.show { display: block; }
+
+/* ── RESULTS SCREEN ──────────────────────────────────────────────── */
+#s-results {
+  background: linear-gradient(160deg, #0A1530 0%, #132044 100%);
+  padding: 0; overflow-y: auto; align-items: stretch;
+}
+.results-inner {
+  padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bot) + 20px);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.results-hero { text-align: center; padding: 20px 0; }
+.results-trophy { font-size: 64px; margin-bottom: 8px; }
+.results-score { font-size: 64px; font-weight: 900; color: var(--gold); line-height: 1; }
+.results-name  { font-size: 18px; color: var(--teal); margin-top: 4px; }
+.results-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.results-stat {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; text-align: center;
+}
+.results-stat-val { font-size: 26px; font-weight: 800; color: var(--cream); }
+.results-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 1px; text-transform: uppercase; }
+.results-topics { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.results-topics-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.topic-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.topic-name { font-size: 13px; color: var(--cream); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topic-bar-wrap { flex: 2; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.topic-bar { height: 100%; border-radius: 3px; transition: width .5s; }
+.topic-pct { font-size: 12px; font-weight: 700; width: 32px; text-align: right; }
+.btn-again {
+  padding: 18px; background: var(--gold); border: none; border-radius: 14px;
+  color: #0D1B3E; font-size: 17px; font-weight: 800; cursor: pointer; width: 100%;
+}
+
+/* ── TOAST ───────────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: calc(var(--safe-bot) + 90px); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20,35,70,0.96); color: var(--cream);
+  padding: 10px 18px; border-radius: 100px; font-size: 13px;
+  backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+  opacity: 0; pointer-events: none; transition: all .3s; z-index: 200;
+  white-space: nowrap; max-width: 85vw; text-overflow: ellipsis; overflow: hidden;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── CONFETTI ────────────────────────────────────────────────────── */
+.confetti { position: fixed; pointer-events: none; z-index: 300; }
+
+/* ── BOARD SVG STYLES ────────────────────────────────────────────── */
+.sq-circle { transition: r .2s; }
+.sq-circle:active { r: 22; }
+.player-token { transition: all .3s cubic-bezier(0.34,1.56,0.64,1); }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ────────────────────────────────────────────────── -->
+<div class="screen active" id="s-setup">
+  <div style="width:100%;max-width:380px">
+    <div class="setup-logo">RESIDOLOGY™</div>
+    <div class="setup-sub">Board Prep · ABEM Aligned</div>
+
+    <div class="setup-card">
+      <div class="setup-label">Your Name</div>
+      <input class="setup-input" id="nameInput" placeholder="Dr. [Last Name]" maxlength="30"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+
+      <div class="setup-label">Questions per Game</div>
+      <div class="q-count-row">
+        <button class="q-count-btn" onclick="selQCount(10)">10</button>
+        <button class="q-count-btn sel" onclick="selQCount(20)">20</button>
+        <button class="q-count-btn" onclick="selQCount(30)">30</button>
+        <button class="q-count-btn" onclick="selQCount(50)">50</button>
+      </div>
+
+      <button class="btn-start" onclick="startGame()">Start Game →</button>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;font-size:11px;color:rgba(245,240,232,0.3);letter-spacing:1px">
+      GLOBAL CLERKSHIPS, INC. · ACGME ALIGNED
+    </div>
+  </div>
+</div>
+
+<!-- ── GAME SCREEN ─────────────────────────────────────────────────── -->
+<div class="screen" id="s-game">
+  <!-- Score bar -->
+  <div class="score-bar">
+    <div>
+      <div class="score-name" id="g-name">Dr. —</div>
+      <div class="score-sq" id="g-sq">Square 0 · Round 1</div>
+    </div>
+    <div style="text-align:right">
+      <div class="score-pts" id="g-pts">0</div>
+      <div class="score-pts-lbl">POINTS</div>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="board-wrap">
+    <svg class="board-svg" id="boardSvg" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <!-- Dice area -->
+  <div class="dice-area">
+    <div class="dice-row">
+      <div class="die" id="die1">1</div>
+      <button class="btn-roll" id="btnRoll" onclick="rollDice()">🎲 Roll</button>
+      <div class="die" id="die2">1</div>
+    </div>
+    <div class="sq-info" id="g-sq-info">Land on a square to answer a question</div>
+  </div>
+</div>
+
+<!-- ── QUESTION MODAL ──────────────────────────────────────────────── -->
+<div id="q-modal">
+  <div class="q-sheet">
+    <div class="q-handle"></div>
+    <div class="q-meta">
+      <span class="q-tag topic" id="q-topic">Emergency Medicine</span>
+      <span class="q-tag pts"   id="q-pts">10 pts</span>
+      <span class="q-tag sq"    id="q-sq-name">Square</span>
+    </div>
+    <div class="q-timer-bar"><div class="q-timer-fill" id="q-timer"></div></div>
+    <div class="q-stem" id="q-stem"></div>
+    <div class="q-choices" id="q-choices"></div>
+    <div class="q-feedback" id="q-feedback"></div>
+    <button class="btn-next" id="btnNext" onclick="nextTurn()">Continue →</button>
+  </div>
+</div>
+
+<!-- ── RESULTS SCREEN ─────────────────────────────────────────────── -->
+<div class="screen" id="s-results">
+  <div class="results-inner">
+    <div class="results-hero">
+      <div class="results-trophy" id="r-trophy">🏆</div>
+      <div class="results-score" id="r-score">0</div>
+      <div class="results-name" id="r-name">Dr. —</div>
+    </div>
+    <div class="results-stats">
+      <div class="results-stat">
+        <div class="results-stat-val" id="r-correct">0</div>
+        <div class="results-stat-lbl">Correct</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat-val" id="r-total">0</div>
+        <div class="results-stat-lbl">Questions</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat-val" id="r-acc">0%</div>
+        <div class="results-stat-lbl">Accuracy</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat-val" id="r-rounds">0</div>
+        <div class="results-stat-lbl">Rounds</div>
+      </div>
+    </div>
+    <div class="results-topics">
+      <div class="results-topics-title">Performance by Topic</div>
+      <div id="r-topics"></div>
+    </div>
+    <button class="btn-again" onclick="resetGame()">Play Again</button>
+  </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+// ══ GAME DATA ═════════════════════════════════════════════════════
+const QUESTIONS = [
+  {id:1,q:"A 27-year-old woman returns from a cross-country flight with 1 hour of severe shortness of breath. Pulse 113, RR 28, BP 138/85, O2 sat 89% on room air. Right calf has increased circumference and tenderness behind the right knee. Most likely underlying cause?",opts:{A:"Antithrombin III deficiency",B:"Factor V Leiden mutation",C:"Glanzmann thrombasthenia",D:"Protein C deficiency"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:2,q:"A 68-year-old man has 6 months of leg pain and cramping worse with walking, relieved by rest. Exam: hairless, atrophic skin, cool feet, absent pedal pulses bilaterally. Most likely mechanism?",opts:{A:"Fibromuscular dysplasia",B:"Giant cell arteritis",C:"Hyaline arteriosclerosis",D:"Vascular obstruction by lipid-rich plaques"},ans:"D",topic:"Cardiovascular",acgme:"MK",pts:20,diff:2},
+  {id:3,q:"A 58-year-old with COPD smokes 1 ppd x35 years and is not ready to quit. What is the most appropriate physician statement?",opts:{A:"Are there any reasons why you might want to quit smoking?",B:"Are you aware that your lung condition is chronic at this point?",C:"I'm sure you don't want your wife to suffer as a result of your smoking.",D:"Why haven't you been able to stay off cigarettes?"},ans:"A",topic:"Pulmonary",acgme:"MK",pts:15,diff:1},
+  {id:4,q:"A 40-year-old woman tests positive for Trypanosoma cruzi on blood donation. She emigrated from El Salvador. Most likely vector?",opts:{A:"Bedbug",B:"Black fly",C:"Mosquito",D:"Reduviid bug"},ans:"D",topic:"Infectious Disease",acgme:"MK",pts:20,diff:2},
+  {id:5,q:"A 72-year-old man has 2 months of urinary frequency, nocturia, and slow stream. Symmetric prostatic enlargement on DRE. Most appropriate pharmacotherapy mechanism?",opts:{A:"\u03b11-Adrenergic agonism",B:"\u03b11-Adrenergic antagonism",C:"\u03b12-Adrenergic agonism",D:"\u03b21-Adrenergic antagonism"},ans:"B",topic:"GU",acgme:"MK",pts:20,diff:1},
+  {id:6,q:"An 80-year-old woman post-CVA: looks right \u2014 right eye abducts, left eye adducts. Looks left \u2014 right eye fails to adduct, left eye stays midline. Right hemiparesis, hyperreflexia, Babinski. Additional finding?",opts:{A:"Anesthesia of left face",B:"Asymmetric smile",C:"Hoarseness",D:"Loss of accommodation"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:3},
+  {id:7,q:"A 32-year-old man: 2 weeks of fever, throat pain, scattered 2-4 cm adenopathy. Bilateral tonsillar exudate. Hgb 9.6, WBC 1500, Plt 60K. Heterophile antibody negative. Diagnosis?",opts:{A:"Epstein-Barr virus infection",B:"Gonococcal pharyngitis",C:"HIV infection",D:"Streptococcal pharyngitis"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:20,diff:2},
+  {id:8,q:"A 60-year-old woman on IV oxacillin for staph endocarditis (day 21 of 42) develops fever, rash, arthralgias. Urine: eosinophils and WBC casts. Creatinine 5.7. Most likely cause?",opts:{A:"Collapsing FSGS",B:"Glomerular hypertrophy with hemorrhage",C:"Interstitial inflammatory infiltrate",D:"Mesangial expansion with GBM thickening"},ans:"C",topic:"Renal",acgme:"MK",pts:25,diff:3},
+  {id:9,q:"An 18-month-old girl was at the 25th percentile for weight until 12 months, now below 5th. On 2 bottles of cow's milk formula plus small amounts of table food. Parents have normal stature. Most likely cause?",opts:{A:"Adrenal insufficiency",B:"Caloric insufficiency",C:"Constitutional growth delay",D:"Growth hormone deficiency"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:10,q:"A previously healthy 33-year-old woman stalks the president, believes she is married to his twin. Speaks rapidly, loose associations, no sleep for days. Most likely diagnosis?",opts:{A:"Brief psychotic disorder",B:"Bipolar I disorder with manic episode and psychotic features",C:"Schizophrenia paranoid type",D:"Schizoaffective disorder"},ans:"B",topic:"Psychiatry",acgme:"MK",pts:20,diff:2},
+  {id:11,q:"A 21-year-old man has 6 months of recurrent episodes of sudden chest pain, racing heart, sweating, fear of dying lasting ~10 min. He now avoids going outside. Most likely diagnosis?",opts:{A:"Agoraphobia",B:"Generalized anxiety disorder",C:"Panic disorder with agoraphobia",D:"Social anxiety disorder"},ans:"C",topic:"Psychiatry",acgme:"MK",pts:20,diff:1},
+  {id:12,q:"A 35-year-old has sudden right-sided weakness and incoherent speech at the gym. Left MCA stroke on MRI. Right leg is swollen. Carotid US normal. Most appropriate next diagnostic step?",opts:{A:"Adenosine stress test",B:"Cardiac catheterization",C:"Cardiac MRI with gadolinium",D:"Echocardiography with bubble study"},ans:"D",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:13,q:"A 65-year-old man with COPD on amiodarone, warfarin, lisinopril, tiotropium, propranolol has 2 years of progressive dyspnea and dry cough. Fine bilateral crackles. Most likely medication cause?",opts:{A:"Amiodarone",B:"Lisinopril",C:"Propranolol",D:"Tiotropium"},ans:"A",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:14,q:"An 18-month-old boy with blue sclerae and recurrent fractures. Mother had childhood fractures. Most appropriate regular screening?",opts:{A:"Audiography",B:"DEXA scan",C:"Echocardiography",D:"Retinal examination"},ans:"A",topic:"Pediatrics",acgme:"MK",pts:20,diff:2},
+  {id:15,q:"A 70-year-old woman with lung cancer and dementia is impaired. Cared for by boyfriend of 20 years. No healthcare power of attorney. Most appropriate decision-maker?",opts:{A:"Boyfriend",B:"Long-term neighbor nurse",C:"Physician",D:"Son who lives out of state"},ans:"A",topic:"Ethics",acgme:"PROF",pts:20,diff:2},
+  {id:16,q:"A 35-year-old woman: right knee pain/swelling 2 days. Synovial fluid WBC 120,000, 90% PMNs, Gram stain negative. Most appropriate additional test on synovial fluid?",opts:{A:"Culture for bacteria",B:"Glucose measurement",C:"Polarized light microscopy",D:"Protein level"},ans:"A",topic:"Musculoskeletal",acgme:"PC",pts:20,diff:2},
+  {id:17,q:"An 18-year-old takes acetaminophen overdose (~10-15g) 2 hours ago. Alert, vitals stable. In addition to serum APAP level, most appropriate next step?",opts:{A:"Administer N-acetylcysteine",B:"Arrange hemodialysis",C:"Gastric lavage",D:"Sodium bicarbonate infusion"},ans:"A",topic:"Toxicology",acgme:"MK",pts:20,diff:1},
+  {id:18,q:"A 52-year-old woman has 3 weeks of progressive dyspnea and leg swelling. Echo: EF 20%, dilated ventricles. She drinks 2 bottles of wine per day. Most likely cardiomyopathy etiology?",opts:{A:"Alcoholic cardiomyopathy",B:"Hypertensive cardiomyopathy",C:"Peripartum cardiomyopathy",D:"Viral myocarditis"},ans:"A",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:19,q:"A 45-year-old with BMI 38 reports loud snoring, morning headaches, excessive daytime sleepiness, and witnessed apneas. Most appropriate diagnostic test?",opts:{A:"Arterial blood gas",B:"Chest X-ray",C:"Polysomnography",D:"Spirometry"},ans:"C",topic:"Pulmonary",acgme:"MK",pts:20,diff:1},
+  {id:20,q:"A 68-year-old with T2DM, HTN, CKD (GFR 28), bilateral leg edema, albuminuria 3.5 g/day, BP 162/94. Which antihypertensive best slows CKD progression?",opts:{A:"Amlodipine",B:"Carvedilol",C:"Lisinopril",D:"Hydrochlorothiazide"},ans:"C",topic:"Renal",acgme:"MK",pts:20,diff:1},
+  {id:21,q:"A 58-year-old with HTN/hyperlipidemia has 45 min of crushing substernal chest pain. ECG: ST elevation II, III, aVF. BP 88/60, HR 48. Most appropriate next step?",opts:{A:"IV metoprolol 5mg",B:"Activate cath lab and give IV fluids",C:"Sublingual nitroglycerin 0.4mg",D:"Obtain echocardiogram first"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:22,q:"A 72-year-old woman has palpitations and dyspnea. ECG: irregularly irregular, no P waves, ventricular rate 142 bpm, BP 102/68, alert. Most appropriate initial management?",opts:{A:"Synchronized cardioversion 200J",B:"IV diltiazem for rate control",C:"IV amiodarone for rhythm control",D:"IV adenosine 6mg"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:23,q:"A 45-year-old man with Marfan syndrome has sudden tearing chest pain radiating to his back. BP R arm 162/90, L arm 134/78. Widened mediastinum on CXR. Immediate treatment?",opts:{A:"IV morphine and furosemide",B:"IV esmolol targeting HR <60 and SBP <120",C:"IV tPA 100mg over 2 hours",D:"Aspirin 324mg and heparin drip"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:24,q:"A 66-year-old with CHF (EF 25%) has severe dyspnea, O2 sat 82%, BP 190/110, HR 110, diffuse crackles. Best initial treatment combination?",opts:{A:"IV furosemide 80mg and morphine",B:"CPAP plus IV nitroglycerin plus IV furosemide",C:"Endotracheal intubation and IV amiodarone",D:"IV metoprolol and oral spironolactone"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:25,q:"A 28-year-old woman: palpitations and lightheadedness. ECG: regular narrow complex tachycardia 182 bpm, no P waves. Vagal maneuvers fail. BP 118/74. Best next treatment?",opts:{A:"Synchronized cardioversion at 50J",B:"IV adenosine 6mg rapid push with flush",C:"IV verapamil 5mg",D:"IV amiodarone 150mg over 10 min"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:26,q:"A dialysis patient is pulseless with a sinusoidal rhythm at 180 bpm. Most likely diagnosis and initial treatment?",opts:{A:"VT \u2014 defibrillate immediately",B:"Hyperkalemia \u2014 IV calcium gluconate plus defibrillation",C:"Torsades de pointes \u2014 IV magnesium 2g",D:"SVT with aberrancy \u2014 adenosine"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:27,q:"A 70-year-old man collapses. Complete AV dissociation: atrial rate 80, ventricular rate 34. BP 78/50, confused. Immediate treatment?",opts:{A:"IV atropine 1mg and transcutaneous pacing",B:"IV dopamine drip 5 mcg/kg/min",C:"IV adenosine 6mg",D:"Observation and cardiac monitoring"},ans:"A",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:28,q:"A 62-year-old woman has sharp chest pain worse with inspiration, relieved by leaning forward. Temp 38.2\u00b0C. ECG: diffuse ST elevation with PR depression. Diagnosis?",opts:{A:"STEMI",B:"Pulmonary embolism",C:"Acute pericarditis",D:"Aortic dissection"},ans:"C",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:29,q:"A 35-year-old on methadone has palpitations. ECG: QTc 580ms, polymorphic VT that self-terminates. BP 118/76. Most appropriate treatment?",opts:{A:"IV amiodarone 150mg over 10 min",B:"IV magnesium sulfate 2g over 5-10 min",C:"Synchronized cardioversion 100J",D:"IV adenosine 6mg"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:30,q:"A 52-year-old woman: large pericardial effusion, elevated JVP, BP 82/60, HR 122, muffled heart sounds. ECG: electrical alternans. Best immediate intervention?",opts:{A:"IV furosemide 80mg",B:"Emergency pericardiocentesis",C:"IV metoprolol for rate control",D:"Chest tube thoracostomy"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:31,q:"A 55-year-old man has typical angina, normal ECG, negative troponins at 0 and 3 hours, HEART score 7. Most appropriate disposition?",opts:{A:"Discharge with aspirin and 1-week follow-up",B:"Admit for stress testing or angiography",C:"Discharge with 30-day event monitor",D:"Repeat ECG and discharge if unchanged"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:32,q:"ECG shows progressive PR prolongation until a dropped beat, then the pattern repeats. Most accurate description?",opts:{A:"First-degree AV block",B:"Mobitz Type I (Wenckebach) second-degree AV block",C:"Mobitz Type II second-degree AV block",D:"Third-degree complete AV block"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:2},
+  {id:33,q:"A 40-year-old man: BP 220/130 with altered mental status and papilledema. Creatinine 3.2 (baseline 1.0). Target BP reduction in first hour?",opts:{A:"Reduce SBP to <120 mmHg immediately",B:"Reduce MAP by no more than 25% in first hour",C:"Reduce SBP to <160 over 24-48 hours with oral agents",D:"Reduce SBP by 50% within 30 minutes"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:34,q:"A 50-year-old man has exertional syncope and a harsh systolic murmur at the right upper sternal border radiating to carotids. Most likely diagnosis?",opts:{A:"Hypertrophic cardiomyopathy",B:"Aortic stenosis",C:"Mitral regurgitation",D:"Pulmonary stenosis"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:35,q:"A 60-year-old man in cardiogenic shock post-anterior STEMI, not responding to dopamine. Bilateral crackles and JVD. Next best inotrope?",opts:{A:"Add norepinephrine",B:"Add dobutamine",C:"Switch to phenylephrine",D:"Add vasopressin"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:36,q:"WPW patient: irregular wide-complex tachycardia at 220 bpm with pre-excitation. Hemodynamically stable. Which drug is contraindicated?",opts:{A:"Procainamide",B:"Ibutilide",C:"IV adenosine",D:"Electrical cardioversion"},ans:"C",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:37,q:"Post-CABG day 3: fever, JVD, pulsus paradoxus, hypotension, and large pericardial effusion on echo. Most likely diagnosis?",opts:{A:"Pulmonary embolism",B:"Pneumonia with sepsis",C:"Post-pericardiotomy syndrome with tamponade",D:"Mediastinitis"},ans:"C",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:38,q:"A 65-year-old woman: bilateral leg edema, dyspnea, echo shows normal LV function, dilated RA/RV, elevated RVSP 65 mmHg. Most likely etiology?",opts:{A:"Diastolic heart failure",B:"Pulmonary arterial hypertension",C:"Cardiac tamponade",D:"Left heart failure"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:39,q:"A 48-year-old in VF arrest after 3 shocks, CPR, epinephrine x2, amiodarone 300mg \u2014 still in VF. What next?",opts:{A:"Administer lidocaine 1.5 mg/kg",B:"Consider double sequential defibrillation",C:"Give calcium gluconate 1g IV",D:"Stop resuscitation and pronounce"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:30,diff:3},
+  {id:40,q:"A 60-year-old man: BP differential between arms, pulsus paradoxus 15 mmHg, JVD, electrical alternans on ECG. Diagnosis?",opts:{A:"Tension pneumothorax",B:"Massive PE",C:"Cardiac tamponade",D:"Constrictive pericarditis"},ans:"C",topic:"Cardiovascular",acgme:"MK",pts:25,diff:2},
+  {id:41,q:"A 38-year-old cocaine user has acute chest pain, ST elevation V1-V3, elevated troponin. Key management difference from standard STEMI care?",opts:{A:"Add IV labetalol as first-line beta-blocker",B:"Avoid beta-blockers; use benzodiazepines for cocaine-induced coronary spasm",C:"Administer higher-dose thrombolytics",D:"Delay PCI until cocaine clears the system"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:42,q:"A 55-year-old man has syncope while shaving. Carotid sinus massage reproduces a 4-second pause with syncope. Most likely diagnosis?",opts:{A:"Orthostatic hypotension",B:"Vasovagal syncope",C:"Carotid sinus hypersensitivity",D:"Complete heart block"},ans:"C",topic:"Cardiovascular",acgme:"MK",pts:20,diff:2},
+  {id:43,q:"A 60-year-old woman with mechanical mitral valve prosthesis: new regurgitant murmur and hemolysis. Most likely complication?",opts:{A:"Infective endocarditis",B:"Paravalvular leak",C:"Pannus formation",D:"Valve thrombosis"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:25,diff:3},
+  {id:44,q:"Postpartum day 7: a 32-year-old has dyspnea and orthopnea. Echo: EF 25%, dilated cardiomyopathy. Most likely diagnosis?",opts:{A:"Takotsubo cardiomyopathy",B:"Peripartum cardiomyopathy",C:"PPCM mimicking viral myocarditis",D:"Hypertensive emergency"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:45,q:"A 70-year-old woman: AS with peak gradient 52 mmHg, valve area 0.8 cm\u00b2, asymptomatic. Most appropriate next step?",opts:{A:"Emergent valve replacement",B:"Serial echocardiography every 6-12 months",C:"Beta-blocker to reduce gradient",D:"Start IV diuretics for afterload reduction"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:2},
+  {id:46,q:"A 26-year-old asthmatic: severe dyspnea, speaks in single words, peak flow 30%, O2 sat 88%, unresponsive to 3 albuterol nebs. Next best intervention?",opts:{A:"IV methylprednisolone and magnesium sulfate 2g IV",B:"Immediate intubation with ketamine",C:"Heliox 70:30 mixture",D:"IV aminophylline loading dose"},ans:"A",topic:"Pulmonary",acgme:"MK",pts:25,diff:2},
+  {id:47,q:"A 68-year-old with COPD: RR 28, O2 sat 82%, pH 7.29, pCO2 68, confused, on 2L O2 NC. Most appropriate respiratory support?",opts:{A:"Increase O2 to 6L NC",B:"Non-invasive positive pressure ventilation (BiPAP)",C:"Immediate endotracheal intubation",D:"Heliox by nonrebreather mask"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:25,diff:2},
+  {id:48,q:"A 35-year-old intubated for ARDS: VT 600 mL, PEEP 5, FiO2 0.80, plateau pressure 34, P/F ratio 88. Best ventilator adjustment?",opts:{A:"Increase PEEP to 12 and reduce VT to 420 mL (6 mL/kg IBW)",B:"Increase VT to 800 mL to reduce RR",C:"Reduce PEEP to 3 to decrease barotrauma risk",D:"Switch to pressure control only"},ans:"A",topic:"Critical Care",acgme:"PC",pts:30,diff:3},
+  {id:49,q:"A 55-year-old man: sudden pleuritic right chest pain and dyspnea 4 days post-hip arthroplasty. O2 sat 88%, HR 118, BP 108/70. Wells score 6. Most appropriate next diagnostic step?",opts:{A:"D-dimer alone \u2014 act on result",B:"V/Q scan",C:"CT pulmonary angiography",D:"Lower extremity Doppler first"},ans:"C",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:50,q:"A 40-year-old woman: massive PE, BP 78/50, HR 128, despite heparin. Echo: RV dilation, RV/LV >1. No contraindications to thrombolytics. Next best treatment?",opts:{A:"Continue heparin and reassess in 1 hour",B:"Systemic tPA (alteplase) 100mg over 2 hours",C:"Catheter-directed thrombolysis only",D:"IVC filter placement"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:25,diff:3},
+  {id:51,q:"A 30-year-old tall thin man: sudden left-sided chest pain and dyspnea. CXR shows 40% left pneumothorax. O2 sat 96%, BP normal. Best management?",opts:{A:"Needle aspiration via 2nd ICS MCL",B:"Tube thoracostomy",C:"100% oxygen by NRB and observation",D:"Immediate intubation"},ans:"A",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:52,q:"An intubated patient: sudden high peak pressures, decreased left breath sounds, hypotension, trachea deviates right. Immediate next step?",opts:{A:"Stat portable CXR",B:"Needle decompression left 2nd ICS midclavicular line",C:"Increase PEEP to improve oxygenation",D:"Bronchoscopy for mucous plug"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:25,diff:2},
+  {id:53,q:"A 65-year-old from Southeast Asia: 4cm cavitary RUL lesion, night sweats, weight loss, hemoptysis. AFB smear positive. First-line therapy?",opts:{A:"RIPE x2 months then RH x4 months",B:"IV vancomycin and piperacillin-tazobactam",C:"Amoxicillin-clavulanate for 6 weeks",D:"Fluconazole 400mg daily x6 months"},ans:"A",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:54,q:"A 50-year-old man: septic shock from pneumonia. BP 72/40 despite 3L NS. Which vasopressor should be added first?",opts:{A:"Epinephrine",B:"Norepinephrine",C:"Dopamine",D:"Phenylephrine"},ans:"B",topic:"Critical Care",acgme:"PC",pts:20,diff:1},
+  {id:55,q:"Surviving Sepsis Campaign: when should antibiotics be initiated in sepsis?",opts:{A:"Only after 2 blood cultures are drawn",B:"Within 3 hours of recognition",C:"Within 1 hour of recognition",D:"After CT imaging to confirm source"},ans:"C",topic:"Critical Care",acgme:"PC",pts:20,diff:2},
+  {id:56,q:"A 42-year-old woman: day 8 of heparin therapy. Platelets drop from 230K to 48K. New DVT found. Most likely diagnosis and treatment?",opts:{A:"DIC \u2014 give FFP",B:"Heparin-induced thrombocytopenia (HIT) \u2014 stop heparin, start argatroban",C:"TTP \u2014 plasmapheresis",D:"Normal heparin effect \u2014 continue current regimen"},ans:"B",topic:"Critical Care",acgme:"PC",pts:25,diff:3},
+  {id:57,q:"A 68-year-old COPD patient: pH 7.32, PaO2 48, PaCO2 55, FiO2 0.40. Using accessory muscles. Most appropriate next intervention?",opts:{A:"Increase FiO2 to 1.0 via NRB",B:"Non-invasive positive pressure ventilation (NIPPV)",C:"Immediate intubation",D:"IV aminophylline loading dose"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:25,diff:2},
+  {id:58,q:"A 35-year-old woman: dyspnea, pleuritic chest pain, friction rub 2 weeks after viral URI. Echo: pericardial effusion, EF 55%. What medication is contraindicated as first-line?",opts:{A:"NSAIDs",B:"Colchicine",C:"Anticoagulants for concurrent PE",D:"Corticosteroids as first-line treatment"},ans:"D",topic:"Pulmonary",acgme:"MK",pts:25,diff:3},
+  {id:59,q:"An intubated ARDS patient on lung-protective ventilation: P/F ratio 100 despite optimization. Which intervention has strongest mortality benefit evidence?",opts:{A:"High-frequency oscillatory ventilation",B:"Prone positioning for \u226516 hours/day",C:"Inhaled nitric oxide",D:"Extracorporeal membrane oxygenation"},ans:"B",topic:"Critical Care",acgme:"PC",pts:30,diff:3},
+  {id:60,q:"A 55-year-old woman with DM and COPD has CAP. She is allergic to penicillin. Appropriate outpatient treatment?",opts:{A:"Azithromycin alone",B:"Doxycycline alone",C:"Respiratory fluoroquinolone (levofloxacin or moxifloxacin)",D:"TMP-SMX alone"},ans:"C",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:61,q:"A 70-year-old man: elevated D-dimer, Wells score 5.5 (immobilized 3+ days, tachycardia, no alternative diagnosis). Best next step?",opts:{A:"Discharge home \u2014 D-dimer positive but low probability",B:"CT pulmonary angiography",C:"V/Q scan (avoid contrast for CKD)",D:"Start heparin empirically without imaging"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:62,q:"A 32-year-old pregnant woman at 28 weeks meets ARDS criteria. What tidal volume is appropriate for lung-protective ventilation?",opts:{A:"4-6 mL/kg predicted body weight",B:"8-10 mL/kg actual body weight",C:"10-12 mL/kg predicted body weight",D:"Fixed 550 mL regardless of weight"},ans:"A",topic:"Critical Care",acgme:"PC",pts:25,diff:2},
+  {id:63,q:"A 48-year-old post-abdominal surgery: new O2 requirement on day 3. CXR: right basilar opacity with blunting of costophrenic angle. Best diagnostic and therapeutic maneuver?",opts:{A:"Bronchoscopy for possible mucous plug",B:"Thoracentesis",C:"CT chest to characterize the opacity",D:"Treat empirically with diuretics"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:64,q:"A 68-year-old with CAP: BUN 28, RR 28, BP 88/50, confusion, age >65. PSI class equivalent. Most appropriate site of care?",opts:{A:"Outpatient with oral antibiotics",B:"ICU admission",C:"Regular floor admission",D:"Observation unit only"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:25,diff:3},
+  {id:65,q:"A 52-year-old man with obesity, OSA, and CHF: AHI 42, O2 nadir 76%, predominantly obstructive. Most appropriate treatment?",opts:{A:"Weight loss counseling and reassess",B:"Continuous positive airway pressure (CPAP)",C:"BiPAP for CHF",D:"Oral mandibular advancement device only"},ans:"B",topic:"Pulmonary",acgme:"MK",pts:20,diff:2},
+  {id:66,q:"A 25-year-old man takes girlfriend's metoprolol (20 tablets) in a suicide attempt. HR 38, BP 72/40, glucose 58. First-line treatment?",opts:{A:"IV atropine 1mg",B:"IV calcium chloride and high-dose insulin euglycemic therapy",C:"IV glucagon 3-5mg bolus",D:"Transcutaneous pacing"},ans:"C",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:67,q:"A 35-year-old: acetaminophen overdose 8 hours ago. Serum APAP 250 mcg/mL at 4 hours (above treatment line). AST 420. Treatment?",opts:{A:"N-acetylcysteine \u2014 oral or IV",B:"Activated charcoal alone",C:"Hemodialysis immediately",D:"Fresh frozen plasma for coagulopathy"},ans:"A",topic:"Toxicology",acgme:"MK",pts:20,diff:1},
+  {id:68,q:"A 40-year-old man: altered mental status, miosis, bradycardia, excessive secretions, bronchospasm after working in an orchard. Most likely toxidrome and antidote?",opts:{A:"Sympathomimetic \u2014 phentolamine",B:"Opioid \u2014 naloxone",C:"Cholinergic (organophosphate) \u2014 atropine and pralidoxime",D:"Anticholinergic \u2014 physostigmine"},ans:"C",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:69,q:"A 22-year-old party-goer: hyperthermia 40.8\u00b0C, diaphoresis, agitation, clonus, and hyperreflexia after MDMA. Most likely diagnosis?",opts:{A:"Neuroleptic malignant syndrome",B:"Anticholinergic toxidrome",C:"Serotonin syndrome",D:"Malignant hyperthermia"},ans:"C",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:70,q:"A 60-year-old woman on digoxin: nausea, xanthopsia, bradycardia. Digoxin level 4.2 ng/mL. K+ 5.8. ECG: HR 38, first-degree AV block. Best treatment?",opts:{A:"Atropine 0.5mg IV and CaCl 1g IV",B:"Digoxin-specific Fab antibody fragments",C:"Transcutaneous pacing as first-line",D:"IV magnesium sulfate 2g"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:71,q:"A 70-year-old man found unresponsive: pupils 2mm, RR 6 shallow, HR 50, BP 90/60. Empty opioid bottle found. Best immediate intervention?",opts:{A:"Endotracheal intubation",B:"Bag-mask ventilation and IV/IM naloxone",C:"IV flumazenil 0.2mg",D:"IV dextrose 50mL of D50"},ans:"B",topic:"Toxicology",acgme:"MK",pts:20,diff:1},
+  {id:72,q:"A 28-year-old at a party: hypertension, tachycardia, hyperthermia, mydriasis, diaphoresis, and agitation. Most likely toxidrome?",opts:{A:"Opioid",B:"Cholinergic",C:"Sympathomimetic",D:"Anticholinergic"},ans:"C",topic:"Toxicology",acgme:"MK",pts:20,diff:1},
+  {id:73,q:"A 19-year-old: HR 130, dry skin, flushed face, dilated pupils, urinary retention, and visual hallucinations after unknown pills. Most likely toxidrome?",opts:{A:"Opioid",B:"Cholinergic",C:"Sympathomimetic",D:"Anticholinergic"},ans:"D",topic:"Toxicology",acgme:"MK",pts:20,diff:1},
+  {id:74,q:"A 45-year-old man ingests antifreeze (ethylene glycol). He is intoxicated but alert. Most characteristic finding?",opts:{A:"High anion gap metabolic acidosis with elevated osmolar gap",B:"Respiratory alkalosis with low anion gap",C:"Normal anion gap metabolic acidosis",D:"Pure osmolar gap without acidosis"},ans:"A",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:75,q:"A 35-year-old woman on isoniazid has new-onset seizures refractory to benzodiazepines. Most appropriate treatment?",opts:{A:"IV phenytoin loading dose",B:"IV pyridoxine (Vitamin B6)",C:"IV valproate loading dose",D:"IV levetiracetam"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:76,q:"A patient ingests tricyclic antidepressants. ECG: HR 128, QRS 130ms, right axis deviation. BP 74/40. Best immediate treatment?",opts:{A:"IV sodium bicarbonate bolus 1-2 mEq/kg",B:"IV physostigmine 2mg",C:"Magnesium sulfate 2g IV",D:"IV amiodarone 300mg"},ans:"A",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:77,q:"A 68-year-old man on warfarin (INR 8.2) has intracranial hemorrhage. Most appropriate reversal agent?",opts:{A:"Vitamin K 10mg IV alone",B:"4-factor PCC (KCentra) plus Vitamin K",C:"FFP 2 units plus warfarin continuation",D:"Protamine sulfate"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:78,q:"A 50-year-old on dabigatran (last dose 8 hours ago) has acute ischemic stroke and is a candidate for reversal for thrombolysis. Reversal agent?",opts:{A:"Vitamin K IV",B:"4-factor PCC",C:"Idarucizumab (Praxbind)",D:"FFP 4 units"},ans:"C",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:79,q:"A landscaper mixed bleach and ammonia. He has confusion, nausea, and vomiting. Toxic gas produced and primary treatment?",opts:{A:"Chlorine gas \u2014 100% O2 and bronchodilators",B:"Chloramine gas \u2014 100% O2 and bronchodilators",C:"Hydrogen sulfide \u2014 amyl nitrite",D:"Carbon monoxide \u2014 hyperbaric O2"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:80,q:"A 42-year-old woman accidentally double-dosed insulin glargine. Glucose now 38. Alert but confused. Best treatment strategy?",opts:{A:"IV D50 bolus only",B:"IV D10 infusion and close glucose monitoring \u2014 risk of prolonged hypoglycemia",C:"Subcutaneous glucagon 1mg and discharge",D:"Octreotide to prevent rebound hypoglycemia"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:81,q:"A carbon monoxide poisoning patient: COHgb 28%, severe headache and confusion, no cardiac symptoms. Best treatment?",opts:{A:"100% O2 by NRB mask \u2014 reassess in 4 hours",B:"Hyperbaric oxygen",C:"Discharge if improving on 100% O2",D:"IV N-acetylcysteine"},ans:"B",topic:"Toxicology",acgme:"MK",pts:20,diff:2},
+  {id:82,q:"A 30-year-old cocaine user: seizures, sinus tachycardia, hypertension, mydriasis. Seizures uncontrolled with IV lorazepam 4mg. Next best treatment?",opts:{A:"IV phenytoin 20 mg/kg",B:"Additional benzodiazepines plus IV propofol",C:"IV labetalol for hypertension first",D:"IV haloperidol for agitation"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:83,q:"A 28-year-old on lithium: tremor, confusion, hyperreflexia. Lithium level 3.1 mEq/L. Creatinine 2.8. Best treatment?",opts:{A:"Activated charcoal and whole-bowel irrigation",B:"Hemodialysis",C:"IV normal saline diuresis only",D:"Hold lithium and recheck in 24 hours"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:3},
+  {id:84,q:"A 2-year-old ingests 30 children's chewable vitamins containing iron. Fe level 480 mcg/dL at 4 hours. Most appropriate treatment?",opts:{A:"Activated charcoal 1g/kg",B:"IV deferoxamine",C:"Whole-bowel irrigation only",D:"Sodium bicarbonate infusion"},ans:"B",topic:"Toxicology",acgme:"MK",pts:25,diff:2},
+  {id:85,q:"A patient found unresponsive. EMS gave naloxone 0.4mg IM with no response. Glucose 62. Pupils dilated. Most important next step?",opts:{A:"Give another dose of naloxone 2mg IV",B:"CT head without contrast",C:"IV D50 for hypoglycemia",D:"Intubate immediately"},ans:"C",topic:"Toxicology",acgme:"MK",pts:20,diff:2},
+  {id:86,q:"A 25-year-old motorcyclist: BP 72/40, HR 138, distended abdomen, no breath sounds on left, trachea midline. What injury should be addressed first?",opts:{A:"Left tension pneumothorax",B:"Cardiac tamponade",C:"Hemorrhagic shock from abdominal injury",D:"Left hemothorax"},ans:"C",topic:"Trauma",acgme:"PC",pts:25,diff:3},
+  {id:87,q:"A 45-year-old falls from 15 feet. C-spine immobilized. BP 88/60, HR 44 despite 2L NS. Warm extremities, no diaphoresis. Most likely diagnosis?",opts:{A:"Hemorrhagic shock",B:"Neurogenic shock",C:"Obstructive shock",D:"Septic shock"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:88,q:"A 30-year-old man stabbed in left chest at 5th ICS MCL. JVD, muffled heart sounds, BP 80/50. Trachea midline. Best immediate intervention?",opts:{A:"Emergent left thoracostomy",B:"Pericardiocentesis",C:"Right chest tube",D:"Intubation first"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:89,q:"ATLS primary trauma survey: correct order of assessment?",opts:{A:"Airway, Breathing, Circulation, Disability, Exposure",B:"Circulation, Airway, Breathing, Disability, Exposure",C:"Airway, Circulation, Breathing, Disability, Exposure",D:"Disability, Airway, Breathing, Circulation, Exposure"},ans:"A",topic:"Trauma",acgme:"PC",pts:15,diff:1},
+  {id:90,q:"A 55-year-old MVC victim: abdominal tenderness, BP 86/52, HR 130, positive FAST. After 2L NS, still hypotensive. Next step?",opts:{A:"Repeat FAST every 15 minutes",B:"CT abdomen/pelvis with contrast",C:"Emergent exploratory laparotomy",D:"Interventional radiology for embolization"},ans:"C",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:91,q:"A 20-year-old: gunshot to right thigh. BP 90/60, HR 128, brisk pulsatile bleeding from wound. Immediate hemorrhage control?",opts:{A:"Apply tourniquet proximal to the wound",B:"Direct pressure only \u2014 tourniquets cause ischemia",C:"Pressure dressing and IV fluids",D:"Emergent OR for ligation"},ans:"A",topic:"Trauma",acgme:"PC",pts:20,diff:1},
+  {id:92,q:"A 35-year-old: widened mediastinum on CXR after high-speed deceleration MVC. BP differential arm to arm. Most concerning injury?",opts:{A:"Cardiac contusion",B:"Traumatic aortic injury",C:"Tension pneumothorax",D:"Esophageal rupture"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:93,q:"Massive transfusion protocol: recommended ratio of products?",opts:{A:"1:1:1 (PRBCs:FFP:Platelets)",B:"3:1:1 (PRBCs:FFP:Platelets)",C:"1:2:1 (PRBCs:FFP:Platelets)",D:"2:1:0 (PRBCs:FFP no platelets until <50K)"},ans:"A",topic:"Trauma",acgme:"PC",pts:20,diff:2},
+  {id:94,q:"A 50-year-old falls from scaffolding. GCS 9. CT head: biconvex hyperdense lesion with midline shift. Most likely diagnosis?",opts:{A:"Subdural hematoma",B:"Epidural hematoma",C:"Subarachnoid hemorrhage",D:"Diffuse axonal injury"},ans:"B",topic:"Trauma",acgme:"PC",pts:20,diff:1},
+  {id:95,q:"A 28-year-old woman: pelvic fracture on X-ray, BP 78/48, HR 142. No response to 2L IV fluid. FAST negative. Most appropriate next intervention?",opts:{A:"CT pelvis to characterize fracture",B:"Pelvic binder and emergent angioembolization",C:"External fixation in the ED",D:"FAST has priority over pelvic binder"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:3},
+  {id:96,q:"A 35-year-old man: isolated closed head injury, GCS 14, pupils reactive, raccoon eyes bilaterally. Most likely fracture?",opts:{A:"Temporal bone",B:"Basilar skull fracture",C:"Occipital condyle fracture",D:"Zygoma fracture"},ans:"B",topic:"Trauma",acgme:"PC",pts:20,diff:1},
+  {id:97,q:"Damage control resuscitation: most important principle?",opts:{A:"Aggressive crystalloid resuscitation to normal blood pressure",B:"Permissive hypotension and hemostatic resuscitation with blood products",C:"Early vasopressor use to maintain MAP >65",D:"Immediate OR for all hemodynamically unstable trauma patients"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:98,q:"A 22-year-old motorcyclist: GCS 7 after crash. He also has a femur fracture. Most immediate priority?",opts:{A:"Reduce femur fracture with traction splint",B:"Emergent CT head",C:"Definitive airway with RSI intubation",D:"Large-bore IV access and fluid resuscitation"},ans:"C",topic:"Trauma",acgme:"PC",pts:20,diff:1},
+  {id:99,q:"A 40-year-old man: stab wound to zone II of neck. He is hemodynamically stable with no active bleeding. Next step?",opts:{A:"Surgical exploration in OR",B:"CT angiography of the neck",C:"Hard collar and observation",D:"Angiography only"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:3},
+  {id:100,q:"A 55-year-old man: grade III blunt splenic injury (laceration >3cm on CT). BP 118/74, HR 88. Most appropriate management?",opts:{A:"Emergent splenectomy",B:"Angioembolization",C:"Non-operative management with observation in ICU",D:"Laparoscopic splenorrhaphy"},ans:"C",topic:"Trauma",acgme:"PC",pts:25,diff:3},
+  {id:101,q:"A 62-year-old man: sudden severe headache (worst of his life), vomiting, stiff neck. CT head is normal. Next best step?",opts:{A:"MRI brain with gadolinium",B:"Lumbar puncture \u2014 look for xanthochromia",C:"Empiric antibiotics and admit",D:"Discharge with follow-up in 24 hours"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:102,q:"A 70-year-old woman with AF (no anticoagulation): sudden aphasia and right arm weakness lasting 45 minutes, fully resolved. CT negative. ABCD2 score components?",opts:{A:"Age, BP, Clinical features, Duration, Diabetes",B:"Age, BMI, CRP, Dyspnea, Dialysis",C:"AF, Blood glucose, CT findings, Duration, Disability",D:"Age, BP, Clinical deficit, Days, D-dimer"},ans:"A",topic:"Neurology",acgme:"MK",pts:20,diff:2},
+  {id:103,q:"A 45-year-old man: sudden worst-ever headache. CT shows SAH. Alert (Hunt-Hess grade 1). Next most appropriate step?",opts:{A:"Aspirin 325mg to prevent vasospasm",B:"Neurosurgery consultation and nimodipine",C:"IV heparin to prevent rebleeding",D:"IV tPA for thrombolysis"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:104,q:"A 60-year-old man with DM/HTN: sudden left face and arm weakness, NIHSS 14, last known well 2 hours ago. CT negative for hemorrhage. tPA eligibility?",opts:{A:"tPA is contraindicated in diabetics with hypertension",B:"tPA is indicated if BP can be lowered to <185/110 before administration",C:"tPA requires MRI confirmation before administration",D:"tPA is contraindicated if NIHSS >12"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:105,q:"A 35-year-old woman: 3 days of ascending weakness starting in legs after GI illness 2 weeks ago. Absent DTRs. CSF: elevated protein, normal cells. Most likely diagnosis?",opts:{A:"Multiple sclerosis",B:"Myasthenia gravis",C:"Guillain-Barr\u00e9 syndrome",D:"Transverse myelitis"},ans:"C",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:106,q:"A 25-year-old woman has a first-time generalized tonic-clonic seizure lasting 3 minutes. Now postictal. Most appropriate initial diagnostic test?",opts:{A:"EEG immediately",B:"CT head without contrast",C:"MRI brain with gadolinium",D:"Serum glucose and electrolytes"},ans:"D",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:107,q:"A 40-year-old presents in status epilepticus (continuous seizure >5 minutes). IV access established. First-line treatment?",opts:{A:"IV phenytoin 20 mg/kg",B:"IV lorazepam 0.1 mg/kg (max 4mg)",C:"IV levetiracetam 20 mg/kg",D:"IV lacosamide 200mg"},ans:"B",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:108,q:"A 55-year-old woman: ptosis, diplopia, and dysarthria worse at end of day. Symptoms improve with rest. Most likely diagnosis?",opts:{A:"Multiple sclerosis",B:"Myasthenia gravis",C:"Lambert-Eaton syndrome",D:"Botulism"},ans:"B",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:109,q:"A 30-year-old man: left-sided facial weakness, cannot raise left eyebrow, cannot close left eye, no smile on left. Most likely diagnosis?",opts:{A:"Right hemispheric stroke",B:"Bell's palsy (LMN VII lesion)",C:"Multiple sclerosis relapse",D:"Acoustic neuroma"},ans:"B",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:110,q:"A 68-year-old hypertensive man: sudden severe headache, right gaze deviation, left hemiplegia. CT: right basal ganglia hemorrhage, 45 mL, no herniation. BP 218/124. BP target in first hour?",opts:{A:"Reduce SBP to <130 mmHg immediately",B:"Reduce SBP to <140 mmHg over 1 hour",C:"Maintain current BP \u2014 lowering worsens outcome",D:"Reduce MAP by no more than 10%"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:3},
+  {id:111,q:"A 45-year-old woman: CT head shows hyperdense lesion in the right MCA territory. What does this finding represent?",opts:{A:"Subacute ischemic stroke",B:"Acute hemorrhage",C:"Hyperdense MCA sign \u2014 acute clot in MCA (ischemic stroke)",D:"Calcified meningioma"},ans:"C",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:112,q:"A 55-year-old woman: acute vertigo, vomiting, ipsilateral limb ataxia, ipsilateral Horner, contralateral body loss of pain/temperature. Most likely diagnosis?",opts:{A:"BPPV",B:"Lateral medullary (Wallenberg) syndrome",C:"Labyrinthitis",D:"Brainstem TIA"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:3},
+  {id:113,q:"A 50-year-old man: worst headache of his life, CT head negative, LP shows xanthochromia. Most appropriate next step?",opts:{A:"Start empiric antibiotics for meningitis",B:"CT angiography to identify aneurysm",C:"MRI brain with gadolinium",D:"Repeat CT in 12 hours"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:114,q:"Dix-Hallpike test: positive with upbeat-torsional nystagmus, 5-second latency, fatigue. Most appropriate treatment?",opts:{A:"Meclizine 25mg TID",B:"Canalith repositioning maneuver (Epley)",C:"Prochlorperazine IM for nausea",D:"MRI brain to rule out posterior fossa tumor"},ans:"B",topic:"Neurology",acgme:"MK",pts:20,diff:1},
+  {id:115,q:"A 65-year-old woman with breast cancer: low back pain 3 weeks, new urinary retention, saddle anesthesia, decreased rectal tone. Most urgent next step?",opts:{A:"Lumbar spine X-ray",B:"Emergent MRI lumbosacral spine",C:"Urology consult for urinary retention",D:"IV dexamethasone for spinal cord edema"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:116,q:"A 25-year-old woman: dysuria, frequency, right flank pain. Temp 39.1\u00b0C, WBC 18K, UA with WBC casts. Most appropriate treatment?",opts:{A:"Nitrofurantoin 100mg BID x 5 days",B:"TMP-SMX DS BID x 3 days",C:"IV ceftriaxone 1g x 10-14 days",D:"IV cefazolin for gram-positives only"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:117,q:"A 35-year-old man: nuchal rigidity, fever 39.8\u00b0C, petechial rash, confused. After blood cultures, what should be done first?",opts:{A:"LP before antibiotics",B:"CT head before LP",C:"Give IV ceftriaxone immediately then LP",D:"MRI brain to look for meningeal enhancement"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:25,diff:2},
+  {id:118,q:"A 60-year-old diabetic woman: severe right leg pain, rapidly spreading erythema, crepitus, gas on plain X-ray. Temp 39.5\u00b0C, HR 130. Diagnosis and treatment?",opts:{A:"Cellulitis \u2014 oral dicloxacillin",B:"Necrotizing fasciitis \u2014 emergent surgical debridement and broad-spectrum IV antibiotics",C:"Clostridial myonecrosis \u2014 hyperbaric O2 alone",D:"Compartment syndrome \u2014 fasciotomy"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:25,diff:2},
+  {id:119,q:"A 28-year-old HIV+ (CD4 42): 3 weeks of progressive headache and confusion. India ink prep of CSF shows encapsulated yeast. Most appropriate treatment?",opts:{A:"Fluconazole 400mg oral alone",B:"Liposomal amphotericin B plus flucytosine x2 weeks then fluconazole",C:"Voriconazole IV",D:"Micafungin IV x 6 weeks"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:25,diff:2},
+  {id:120,q:"A 22-year-old student: fever, pharyngitis, cervical lymphadenopathy, splenomegaly. Monospot positive. Most important counseling?",opts:{A:"She requires antiviral treatment with acyclovir",B:"Avoid contact sports for 3-4 weeks due to splenic rupture risk",C:"Isolate from roommates \u2014 highly contagious via respiratory droplets",D:"Follow up in 48 hours for possible tonsillectomy"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:121,q:"A 40-year-old man with prosthetic mitral valve: fever and new regurgitant murmur. Blood cultures: viridans Streptococcus. Most appropriate antibiotic?",opts:{A:"IV vancomycin alone",B:"IV penicillin G plus gentamicin for 2-4 weeks",C:"Oral amoxicillin 500mg TID x 14 days",D:"IV ceftriaxone for 6 weeks"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:25,diff:3},
+  {id:122,q:"A 55-year-old woman: after 5 days of broad-spectrum antibiotics, new profuse watery diarrhea. WBC 28K. CT: diffuse colonic wall thickening. Most appropriate treatment?",opts:{A:"Metronidazole 500mg PO TID x 10 days",B:"Oral vancomycin 125mg QID x 10 days (or fidaxomicin)",C:"IV metronidazole plus oral vancomycin for severe disease",D:"Loperamide for symptomatic control"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:25,diff:3},
+  {id:123,q:"A 48-year-old IV drug user: fever and chills for 3 days, track marks, new systolic murmur at left lower sternal border. Blood cultures drawn. Most likely organism?",opts:{A:"Streptococcus viridans",B:"Staphylococcus aureus",C:"Enterococcus faecalis",D:"Streptococcus bovis"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:124,q:"A 35-year-old returns from camping: 2 days of fever, headache, myalgias, rash involving palms and soles. WBC 3200, Plt 62K. Most likely diagnosis?",opts:{A:"Lyme disease",B:"Rocky Mountain spotted fever",C:"Ehrlichiosis",D:"Tularemia"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:25,diff:2},
+  {id:125,q:"A 75-year-old woman: fever, RLQ tenderness 3 days post-colonoscopy. CT: air in portal venous system and hepatic parenchyma. Most likely diagnosis?",opts:{A:"Post-polypectomy syndrome",B:"Acute mesenteric ischemia",C:"Pylephlebitis with hepatic abscess",D:"Colon perforation with pneumoperitoneum"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:25,diff:3},
+  {id:126,q:"Post-exposure HIV prophylaxis (PEP): latest time after exposure to initiate treatment and still benefit?",opts:{A:"24 hours",B:"48 hours",C:"72 hours",D:"96 hours"},ans:"C",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:127,q:"A 22-year-old sexually active woman: single painless genital ulcer with clean margins and indurated base. No systemic symptoms. Most likely diagnosis?",opts:{A:"Herpes simplex virus type 2",B:"Primary syphilis (chancre)",C:"Chancroid",D:"Lymphogranuloma venereum"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:128,q:"Standard antibiotic combination for severe sepsis from unknown source in patient without drug allergies?",opts:{A:"IV vancomycin plus piperacillin-tazobactam",B:"IV cefazolin alone",C:"Oral ciprofloxacin",D:"IV meropenem alone"},ans:"A",topic:"Infectious Disease",acgme:"MK",pts:20,diff:1},
+  {id:129,q:"A 60-year-old man: right knee aspiration \u2014 WBC 52K (90% PMNs), no crystals on polarized microscopy, Gram stain negative. Most appropriate next step?",opts:{A:"Start allopurinol for presumed gout",B:"Send synovial fluid cultures and start IV antibiotics for septic arthritis",C:"Intra-articular corticosteroid injection",D:"NSAIDs and follow up in 48 hours"},ans:"B",topic:"Infectious Disease",acgme:"MK",pts:25,diff:2},
+  {id:130,q:"A 65-year-old diabetic woman needs CT scan with IV contrast. Creatinine 1.6 mg/dL. Most appropriate prevention for contrast nephropathy?",opts:{A:"Hold metformin and give IV normal saline before and after contrast",B:"Premedicate with IV diphenhydramine and methylprednisolone",C:"Use oral N-acetylcysteine only",D:"No special precautions \u2014 threshold is Cr >2.0"},ans:"A",topic:"Renal",acgme:"MK",pts:20,diff:2},
+  {id:131,q:"A 55-year-old alcoholic: acute epigastric pain radiating to back, nausea, vomiting. Lipase 1850. CT: peripancreatic fluid, no necrosis. Ranson score 2 at 48 hours. Best initial management?",opts:{A:"NPO, IV fluids, and pain control",B:"Emergency ERCP",C:"IV antibiotics for infected necrosis",D:"Urgent surgical debridement"},ans:"A",topic:"GI",acgme:"MK",pts:20,diff:1},
+  {id:132,q:"A 72-year-old man: sudden painless bright red rectal bleeding, BP 90/60, HR 122. History of diverticulosis. Most appropriate next step?",opts:{A:"Colonoscopy immediately after bowel prep",B:"Resuscitate with IV fluids and blood then CT angiography",C:"Barium enema to identify source",D:"Emergent OR laparotomy"},ans:"B",topic:"GI",acgme:"MK",pts:25,diff:2},
+  {id:133,q:"A 40-year-old woman: RUQ pain after fatty meal, fever, jaundice, Murphy's sign positive. WBC 16K. AST 180, ALT 210, ALP 380, T.bili 4.2. Most likely diagnosis?",opts:{A:"Acute cholecystitis",B:"Ascending cholangitis",C:"Acute hepatitis",D:"Choledocholithiasis without infection"},ans:"B",topic:"GI",acgme:"MK",pts:25,diff:2},
+  {id:134,q:"A 35-year-old man: 4 hours of RLQ pain. CT confirms appendicitis without perforation. WBC 14K, Temp 38.1\u00b0C. Hemodynamically stable. Best treatment?",opts:{A:"IV antibiotics and hospital admission \u2014 no surgery",B:"Emergent OR for appendectomy",C:"IV antibiotics alone with outpatient follow-up",D:"CT-guided drainage of peri-appendiceal abscess"},ans:"B",topic:"GI",acgme:"MK",pts:20,diff:1},
+  {id:135,q:"A 65-year-old cirrhotic patient with ascites: fever 38.8\u00b0C, abdominal pain, confusion. Paracentesis: PMN count 280/mm3. Diagnosis and treatment?",opts:{A:"Secondary bacterial peritonitis \u2014 emergent surgery",B:"Spontaneous bacterial peritonitis \u2014 IV cefotaxime and albumin",C:"Tuberculous peritonitis \u2014 RIPE therapy",D:"Malignant ascites \u2014 repeat paracentesis"},ans:"B",topic:"GI",acgme:"MK",pts:25,diff:2},
+  {id:136,q:"A 55-year-old man: sudden tearing chest pain, dysphagia, fever after endoscopy. CXR shows pneumomediastinum. Most likely diagnosis?",opts:{A:"Spontaneous esophageal rupture (Boerhaave)",B:"Aortic dissection",C:"Esophageal perforation post-endoscopy",D:"Tension pneumothorax"},ans:"C",topic:"GI",acgme:"MK",pts:25,diff:3},
+  {id:137,q:"A 30-year-old woman: acute onset diffuse abdominal pain, rigid abdomen, free air under diaphragm on upright CXR. Most appropriate next step?",opts:{A:"CT abdomen/pelvis with PO contrast",B:"Emergent surgical consultation",C:"NPO, IV fluids, and serial abdominal exams",D:"Upper GI series with barium"},ans:"B",topic:"GI",acgme:"MK",pts:25,diff:2},
+  {id:138,q:"A 60-year-old man on aspirin and naproxen: melena and hematemesis. BP 88/56, HR 136. After initial resuscitation, most appropriate definitive management?",opts:{A:"IV PPI drip and urgent endoscopy",B:"Emergent surgery",C:"IV vasopressin and octreotide",D:"Fresh frozen plasma and admit to floor"},ans:"A",topic:"GI",acgme:"MK",pts:25,diff:2},
+  {id:139,q:"A 25-year-old man: left scrotal pain and swelling for 4 hours. Exquisitely tender, absent cremasteric reflex, transverse lie. Doppler US shows absent flow. Next step?",opts:{A:"Emergent surgical exploration \u2014 do not delay for US results",B:"Doppler US first then surgery if needed",C:"IV antibiotics for epididymitis",D:"Aspiration for orchitis culture"},ans:"A",topic:"GU",acgme:"MK",pts:25,diff:2},
+  {id:140,q:"A 65-year-old man: severe left flank pain radiating to groin, hematuria. CT KUB: 6mm ureteral stone at UVJ. Management?",opts:{A:"IV morphine, ketorolac, IV fluids, and urology outpatient follow-up if stone <10mm",B:"Emergent ureteroscopy",C:"ESWL in the ED",D:"Nephrology consult for renal artery embolism"},ans:"A",topic:"GU",acgme:"MK",pts:20,diff:1},
+  {id:141,q:"A 35-year-old man with sickle cell disease: persistent painful erection for 4 hours. Most appropriate initial management?",opts:{A:"IV morphine and IV fluids with exchange transfusion",B:"Penile aspiration and intracavernosal phenylephrine",C:"Urgent urology consult for surgical shunt",D:"Ice packs and observation"},ans:"B",topic:"GU",acgme:"MK",pts:25,diff:3},
+  {id:142,q:"A 50-year-old diabetic woman: acute right flank pain, fever 39\u00b0C, tender palpable right flank mass. CT: emphysematous changes in collecting system. Most likely organism?",opts:{A:"Staphylococcus aureus",B:"Escherichia coli \u2014 emphysematous pyelonephritis",C:"Candida albicans",D:"Mycobacterium tuberculosis"},ans:"B",topic:"GU",acgme:"MK",pts:25,diff:3},
+  {id:143,q:"A 30-year-old woman: acute pelvic pain, vaginal discharge, cervical motion tenderness. Pregnancy test negative. WBC 14K. Most appropriate treatment?",opts:{A:"Ceftriaxone 500mg IM plus doxycycline 100mg BID x14 days plus metronidazole",B:"Azithromycin 1g single dose",C:"Ciprofloxacin 500mg BID x 7 days",D:"Ampicillin-sulbactam IV"},ans:"A",topic:"GU",acgme:"MK",pts:20,diff:1},
+  {id:144,q:"A 24-year-old sexually active woman: acute right lower quadrant pain. Beta-hCG 1800 mIU/mL. TVUS: no IUP, right adnexal mass. Most likely diagnosis?",opts:{A:"Ruptured ovarian cyst",B:"Ectopic pregnancy \u2014 potentially ruptured",C:"Appendicitis",D:"PID"},ans:"B",topic:"GU",acgme:"MK",pts:25,diff:2},
+  {id:145,q:"A 65-year-old man: urinary retention, firm nodular prostate. PSA 48. CT: metastatic bone lesions. Most likely diagnosis?",opts:{A:"Benign prostatic hyperplasia",B:"Prostate cancer with metastases",C:"Bladder cancer",D:"Prostatitis"},ans:"B",topic:"GU",acgme:"MK",pts:20,diff:1},
+  {id:146,q:"A 3-year-old: barky cough, inspiratory stridor, low-grade fever. Neck X-ray: steeple sign. Alert, no drooling. Most appropriate treatment?",opts:{A:"Emergent intubation",B:"Nebulized racemic epinephrine and IM dexamethasone",C:"Oral amoxicillin for 10 days",D:"IV ceftriaxone for epiglottitis"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:147,q:"A 6-month-old boy: bulging fontanelle, fever, inconsolable high-pitched cry. LP: WBC 2400 (90% PMNs), glucose 18, protein 185. Most likely organism?",opts:{A:"Neisseria meningitidis",B:"Listeria monocytogenes",C:"Group B Streptococcus",D:"Streptococcus pneumoniae"},ans:"D",topic:"Pediatrics",acgme:"MK",pts:25,diff:2},
+  {id:148,q:"A 2-year-old: witnessed 2-minute tonic-clonic seizure. Returns to baseline. Temperature 39.4\u00b0C. No prior seizures. Most consistent with?",opts:{A:"Complex febrile seizure requiring admission",B:"Simple febrile seizure \u2014 treat fever and reassure parents",C:"Epilepsy \u2014 start levetiracetam",D:"Bacterial meningitis \u2014 LP required"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:149,q:"A 4-month-old: projectile non-bilious vomiting after every feeding for 3 weeks. Hungry after vomiting. Olive-shaped epigastric mass. Hypochloremic hypokalemic metabolic alkalosis. Diagnosis?",opts:{A:"Intussusception",B:"Pyloric stenosis",C:"Malrotation with volvulus",D:"GERD with esophageal stricture"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:150,q:"A 9-month-old: sudden-onset colicky abdominal pain, draws up his knees, red 'currant jelly' stools. Abdominal X-ray shows bowel obstruction. Most appropriate next step?",opts:{A:"Emergent surgery",B:"Air enema \u2014 diagnostic and therapeutic",C:"IV antibiotics and NG decompression",D:"Barium enema only"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:25,diff:2},
+  {id:151,q:"A 2-year-old: limp and refuses to walk. Right leg shorter, held in flexion/abduction/external rotation. Parents deny trauma. Most important diagnosis to exclude?",opts:{A:"Transient synovitis",B:"Septic arthritis \u2014 Kocher criteria apply",C:"Legg-Calv\u00e9-Perthes disease",D:"Developmental dysplasia of hip"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:25,diff:2},
+  {id:152,q:"A 4-year-old boy: 3-day bloody diarrhea after fast food. Now oliguric, pallor, edema. Hgb 7.2, Plt 42K, Creatinine 3.8. Most likely diagnosis?",opts:{A:"Intussusception",B:"Hemolytic uremic syndrome (HUS)",C:"Henoch-Sch\u00f6nlein purpura",D:"TTP"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:25,diff:2},
+  {id:153,q:"A 7-year-old: 4cm scalp laceration, GCS 15, one episode of vomiting immediately after fall. CT head normal. Most appropriate management?",opts:{A:"Admit for 24-hour observation",B:"Laceration repair, discharge with return precautions",C:"CT angiography to rule out vascular injury",D:"MRI brain for all pediatric head injuries"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:154,q:"A 3-year-old: 2-day cough and fever. CXR: right lower lobe infiltrate. Alert, eating, RR 38, O2 sat 97%, Temp 38.8\u00b0C. Most appropriate treatment?",opts:{A:"IV ampicillin in the hospital",B:"Oral amoxicillin and discharge home",C:"Azithromycin for atypical coverage",D:"Ceftriaxone IM and 24-hour recheck"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:20,diff:1},
+  {id:155,q:"A 10-year-old: grade III open tibial fracture, bone visible, contaminated wound. Most appropriate antibiotic after irrigation and stabilization?",opts:{A:"IV cefazolin alone",B:"IV cefazolin plus gentamicin plus metronidazole for contaminated open fracture",C:"Oral amoxicillin-clavulanate",D:"No antibiotics needed if irrigated promptly"},ans:"B",topic:"Pediatrics",acgme:"MK",pts:25,diff:2},
+  {id:156,q:"A 35-year-old man: fever, hypotension, skin separates in sheets with lateral pressure (Nikolsky sign positive). No mucosal involvement. Most likely diagnosis?",opts:{A:"Toxic epidermal necrolysis (TEN)",B:"Stevens-Johnson syndrome",C:"Staphylococcal scalded skin syndrome",D:"Pemphigus vulgaris"},ans:"C",topic:"Dermatology",acgme:"MK",pts:25,diff:2},
+  {id:157,q:"A 45-year-old woman on allopurinol: target lesions, oral erosions, conjunctival involvement, skin detachment 15% BSA. Most likely diagnosis?",opts:{A:"Erythema multiforme",B:"Stevens-Johnson syndrome",C:"Toxic epidermal necrolysis",D:"Staphylococcal scalded skin syndrome"},ans:"B",topic:"Dermatology",acgme:"MK",pts:25,diff:2},
+  {id:158,q:"A 25-year-old hiker: bullseye rash around a tick bite in a Lyme-endemic area. Otherwise well. Most appropriate treatment?",opts:{A:"No treatment \u2014 rash will resolve",B:"Doxycycline 100mg BID x 14-21 days",C:"Amoxicillin 500mg TID x 21 days (pregnant patients/children under 8)",D:"IV ceftriaxone for 4 weeks"},ans:"B",topic:"Dermatology",acgme:"MK",pts:20,diff:1},
+  {id:159,q:"A 30-year-old runner collapses during a marathon. Rectal temperature 41.2\u00b0C. Confused, diaphoretic, tachycardic. Most critical treatment?",opts:{A:"IV acetaminophen to reduce fever",B:"Cold-water immersion (ice bath)",C:"IV normal saline at 1L/hour",D:"Ice packs to axillae and groin only"},ans:"B",topic:"Environmental",acgme:"MK",pts:25,diff:2},
+  {id:160,q:"A 70-year-old man found unresponsive outdoors in winter. Temperature 29\u00b0C. ECG: A-fib with Osborn J-waves. BP 70/40. Initial treatment?",opts:{A:"Defibrillate immediately for A-fib",B:"Active internal rewarming (warm IV fluids, warm humidified O2, warmed irrigations)",C:"Passive external rewarming (warm blankets only)",D:"Avoid any intervention until temperature >30\u00b0C"},ans:"B",topic:"Environmental",acgme:"MK",pts:25,diff:3},
+  {id:161,q:"A 28-year-old diver ascends too quickly from 90 feet. Joint pain, cutaneous mottling, left leg paresthesia. Most appropriate treatment?",opts:{A:"Aspirin and NSAIDs for joint pain",B:"Hyperbaric oxygen (recompression therapy)",C:"100% O2 by NRB and IV fluids",D:"Emergent MRI spine to rule out cord injury"},ans:"B",topic:"Environmental",acgme:"MK",pts:25,diff:2},
+  {id:162,q:"A 35-year-old: 2cm second-degree burn to right palm from curling iron. Wound is moist, pink, and exquisitely painful. Most appropriate management?",opts:{A:"Debride, apply silver sulfadiazine, and admit",B:"Wound care with non-adherent dressing, pain control, and outpatient follow-up",C:"Skin grafting within 48 hours",D:"Topical petroleum jelly and bandage \u2014 no follow-up needed"},ans:"B",topic:"Environmental",acgme:"MK",pts:20,diff:1},
+  {id:163,q:"A 55-year-old man: multiple bee stings, urticaria, angioedema, bronchospasm, BP 72/40 within 5 minutes. Most appropriate immediate treatment?",opts:{A:"IV diphenhydramine 50mg and methylprednisolone 125mg",B:"IM epinephrine 0.3mg (1:1000) to the lateral thigh",C:"Subcutaneous epinephrine",D:"Nebulized albuterol for bronchospasm"},ans:"B",topic:"Environmental",acgme:"MK",pts:20,diff:1},
+  {id:164,q:"A 70-year-old woman: 4cm deep partial-thickness facial burn from kitchen fire. Singed nasal hair, carbonaceous sputum. Most critical concern?",opts:{A:"Infection risk \u2014 start IV antibiotics",B:"Inhalation injury \u2014 early intubation before airway swelling",C:"Fluid resuscitation with Parkland formula",D:"Apply 1% silver sulfadiazine immediately"},ans:"B",topic:"Environmental",acgme:"MK",pts:25,diff:2},
+  {id:165,q:"A 20-year-old surfer: fingertip frostbite. Pale, numb, firm fingertip. You are now in a warm ED. Most appropriate treatment?",opts:{A:"Rub vigorously to increase circulation",B:"Rapid rewarming in warm water (37-40\u00b0C) for 15-30 minutes",C:"Slow passive rewarming at room temperature",D:"Immediate surgical debridement"},ans:"B",topic:"Environmental",acgme:"MK",pts:20,diff:1},
+  {id:166,q:"A 28-year-old pregnant woman at 35 weeks: new headache, visual changes, BP 162/108, and 3+ proteinuria. Most appropriate management?",opts:{A:"Oral nifedipine and outpatient monitoring",B:"IV magnesium sulfate and consideration of delivery",C:"IV labetalol alone for blood pressure control",D:"Emergent C-section without magnesium"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:25,diff:2},
+  {id:167,q:"A 32-year-old G2P1 at 38 weeks: painless bright red vaginal bleeding. FHR 148. No contractions. Cervix closed. Most concerning diagnosis?",opts:{A:"Placenta previa \u2014 do NOT perform digital vaginal exam",B:"Placental abruption",C:"Bloody show of early labor",D:"Cervicitis"},ans:"A",topic:"OB/GYN",acgme:"MK",pts:25,diff:2},
+  {id:168,q:"A 24-year-old G1P0 at 39 weeks in active labor. FHR: variable decelerations. She is in knee-chest position with no improvement. Most likely diagnosis?",opts:{A:"Uteroplacental insufficiency",B:"Umbilical cord compression \u2014 umbilical cord prolapse",C:"Placental abruption",D:"Fetal acidosis"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:25,diff:3},
+  {id:169,q:"A 30-year-old woman at 20 weeks: positive urine culture with 100K CFU/mL E. coli. Asymptomatic. Most appropriate action?",opts:{A:"No treatment \u2014 asymptomatic bacteriuria in pregnancy resolves spontaneously",B:"Treat with oral nitrofurantoin or cephalexin",C:"Treat only if she develops symptoms",D:"Admit for IV antibiotics"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:20,diff:1},
+  {id:170,q:"A 26-year-old at 34 weeks: sudden severe abdominal pain, firm rigid uterus, fetal bradycardia, and vaginal bleeding. Most likely diagnosis?",opts:{A:"Placenta previa",B:"Placental abruption \u2014 emergent delivery",C:"Uterine rupture",D:"Preterm labor"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:25,diff:2},
+  {id:171,q:"A 35-year-old man: threatening to kill his boss, agitated. Suspected substance intoxication plus psychiatric emergency. First step?",opts:{A:"Initiate psychiatric hold and await psychiatric consult",B:"Medical clearance including glucose, vitals, and urine tox screen",C:"Immediate chemical sedation with haloperidol",D:"Call police to press charges"},ans:"B",topic:"Psychiatry",acgme:"MK",pts:20,diff:1},
+  {id:172,q:"A 70-year-old man: acute confusion, disorientation, and visual hallucinations on day 2 post-hip surgery. Was lucid before surgery. Most likely diagnosis?",opts:{A:"Dementia \u2014 Alzheimer type",B:"Delirium \u2014 acute onset with fluctuating course",C:"Psychosis \u2014 first episode",D:"Depression with psychotic features"},ans:"B",topic:"Psychiatry",acgme:"MK",pts:20,diff:1},
+  {id:173,q:"A 25-year-old woman: 3rd suicide attempt, medically stable, says she wants to die. Most appropriate next step?",opts:{A:"Psychiatric consultation and involuntary hold",B:"Discharge with outpatient follow-up tomorrow",C:"Prescribe antidepressants before discharge",D:"Call her family and release her to their custody"},ans:"A",topic:"Psychiatry",acgme:"MK",pts:20,diff:1},
+  {id:174,q:"A 45-year-old man on haloperidol: hyperthermia 40.1\u00b0C, muscle rigidity, altered consciousness, autonomic instability. CK 18K. Diagnosis and treatment?",opts:{A:"Serotonin syndrome \u2014 cyproheptadine",B:"Neuroleptic malignant syndrome \u2014 stop antipsychotic, IV dantrolene/bromocriptine",C:"Heat stroke \u2014 ice bath",D:"Malignant hyperthermia \u2014 IV dantrolene"},ans:"B",topic:"Psychiatry",acgme:"MK",pts:25,diff:3},
+  {id:175,q:"A 30-year-old woman: chest tightness, dyspnea, carpopedal spasm, perioral tingling during a stressful event. ABG: pH 7.52, pCO2 26. Most likely diagnosis?",opts:{A:"Pulmonary embolism",B:"Hyperventilation syndrome",C:"Myocardial infarction",D:"Spontaneous pneumothorax"},ans:"B",topic:"Psychiatry",acgme:"MK",pts:20,diff:1},
+  {id:176,q:"RSI for an 80kg head-injured combative patient. Best induction sequence?",opts:{A:"Midazolam 2mg plus succinylcholine 120mg",B:"Ketamine 1.5 mg/kg plus succinylcholine 1.5 mg/kg",C:"Etomidate 0.3 mg/kg alone",D:"Propofol 2 mg/kg plus rocuronium 1.2 mg/kg"},ans:"B",topic:"Procedures",acgme:"PC",pts:25,diff:3},
+  {id:177,q:"Which of the following is an absolute contraindication to succinylcholine?",opts:{A:"Suspected full stomach",B:"Known hyperkalemia, crush injury >72 hours, or denervation injury",C:"Pediatric patients under 5",D:"Reactive airway disease"},ans:"B",topic:"Procedures",acgme:"PC",pts:25,diff:2},
+  {id:178,q:"Tension pneumothorax in an intubated patient confirmed by needle decompression. Definitive treatment?",opts:{A:"Immediate bilateral chest tubes",B:"Left-sided chest tube thoracostomy",C:"VATS surgery",D:"Increase PEEP on ventilator"},ans:"B",topic:"Procedures",acgme:"PC",pts:20,diff:1},
+  {id:179,q:"Difficult airway: intubation has failed, oxygenation is deteriorating (can't intubate, can't oxygenate). Next step?",opts:{A:"Insert LMA and attempt retrograde intubation",B:"Emergent surgical cricothyrotomy",C:"Call anesthesia and wait",D:"Awaken the patient and try again"},ans:"B",topic:"Procedures",acgme:"PC",pts:25,diff:2},
+  {id:180,q:"A 68-year-old COPD/CHF patient with respiratory failure. Before intubating, CPAP is tried. Which scenario is a contraindication to NIPPV?",opts:{A:"Hypercapnic COPD exacerbation",B:"Cardiogenic pulmonary edema",C:"Agitation with inability to maintain seal and GCS 9",D:"Mild hypoxemic respiratory failure with intact airway"},ans:"C",topic:"Procedures",acgme:"PC",pts:20,diff:2},
+  {id:181,q:"A 4-year-old child needs IV access; peripheral access has failed twice. Next best option for medication administration?",opts:{A:"Central line via IJ",B:"Intraosseous (IO) access",C:"Continue attempting peripheral access",D:"Cut-down saphenous vein"},ans:"B",topic:"Procedures",acgme:"PC",pts:20,diff:1},
+  {id:182,q:"During thoracentesis for large pleural effusion, maximum volume to drain in a single session to avoid re-expansion pulmonary edema?",opts:{A:"500 mL",B:"1000-1500 mL",C:"2000 mL",D:"No limit \u2014 drain completely"},ans:"B",topic:"Procedures",acgme:"PC",pts:25,diff:2},
+  {id:183,q:"Most common complication of central venous catheter placement via the subclavian approach?",opts:{A:"Arterial puncture",B:"Pneumothorax",C:"Air embolism",D:"Bloodstream infection"},ans:"B",topic:"Procedures",acgme:"PC",pts:20,diff:1},
+  {id:184,q:"A 55-year-old man: atrial flutter at 160 bpm, BP 88/60. Needs cardioversion. Appropriate energy level for synchronized cardioversion?",opts:{A:"50-100J biphasic",B:"200J biphasic",C:"360J monophasic",D:"Synchronized at 10J to start low"},ans:"A",topic:"Procedures",acgme:"PC",pts:20,diff:2},
+  {id:185,q:"Most appropriate nerve block for pain control in isolated radial head fracture?",opts:{A:"Hematoma block at the fracture site",B:"Interscalene brachial plexus block",C:"Supraclavicular nerve block",D:"IV opioids only \u2014 nerve blocks not appropriate"},ans:"A",topic:"Procedures",acgme:"PC",pts:20,diff:2},
+  {id:186,q:"A 50-year-old woman: symmetric ascending weakness, absent reflexes, autonomic instability after Campylobacter gastroenteritis 2 weeks ago. GBS confirmed. Treatment?",opts:{A:"High-dose oral corticosteroids",B:"IV immunoglobulin (IVIG) or plasmapheresis",C:"Observation only \u2014 GBS is self-limiting",D:"IV methylprednisolone 1g/day x 5 days"},ans:"B",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:187,q:"A 35-year-old man with T2DM: glucose 620, Na 128, pH 7.08, bicarb 10, anion gap 26, ketones positive. Most appropriate fluid resuscitation?",opts:{A:"Normal saline at 1L/hour for first 2 hours then reassess",B:"D5W immediately to prevent cerebral edema",C:"Lactated Ringer only \u2014 avoid normal saline",D:"Albumin 5% for better volume expansion"},ans:"A",topic:"Endocrine",acgme:"MK",pts:25,diff:2},
+  {id:188,q:"A 45-year-old man on lithium: muscle weakness, decreased DTRs, peaked T-waves, QRS 140ms. K+ 6.8 mEq/L. Most appropriate immediate treatment?",opts:{A:"IV sodium bicarbonate",B:"IV calcium gluconate 1g to stabilize cardiac membrane",C:"Kayexalate PO for potassium binding",D:"Emergent dialysis as first-line"},ans:"B",topic:"Endocrine",acgme:"MK",pts:25,diff:2},
+  {id:189,q:"A 65-year-old woman on levothyroxine: altered mental status, hypothermia 35.2\u00b0C, bradycardia, hyponatremia. TSH 88. Most appropriate treatment?",opts:{A:"Oral levothyroxine titration over weeks",B:"IV T4 (levothyroxine) plus IV T3 plus IV hydrocortisone",C:"Warmed blankets and observation",D:"IV normal saline and reassess in 6 hours"},ans:"B",topic:"Endocrine",acgme:"MK",pts:25,diff:3},
+  {id:190,q:"A 40-year-old man on corticosteroids for asthma: hypotensive after MVC despite 2L NS. BP 78/42, HR 122. Na 128, K 5.8, glucose 52. Most likely etiology of shock?",opts:{A:"Hemorrhagic shock from trauma",B:"Adrenal crisis (relative adrenal insufficiency)",C:"Neurogenic shock",D:"Distributive septic shock"},ans:"B",topic:"Endocrine",acgme:"MK",pts:25,diff:3},
+  {id:191,q:"A 28-year-old woman at 32 weeks with pre-eclampsia has a seizure. BP 172/114. Most appropriate immediate treatment to prevent further seizures?",opts:{A:"IV diazepam 5mg",B:"IV magnesium sulfate 4-6g loading dose",C:"IV phenytoin 20mg/kg",D:"IV labetalol 20mg for blood pressure only"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:25,diff:2},
+  {id:192,q:"A 50-year-old man with CKD (GFR 20) needs emergent CT. Creatinine 2.9. Most effective prevention of contrast nephropathy in high-risk patients?",opts:{A:"IV sodium bicarbonate infusion pre-contrast",B:"Isotonic normal saline IV hydration pre- and post-procedure",C:"Oral N-acetylcysteine alone",D:"Hold the contrast study entirely"},ans:"B",topic:"Renal",acgme:"MK",pts:20,diff:2},
+  {id:193,q:"An 80-year-old man: new-onset confusion, urinary retention, back pain. MRI: L3-L4 disc herniation with T2 signal changes in the conus. Diagnosis?",opts:{A:"Cauda equina syndrome \u2014 emergent surgery",B:"Transverse myelitis",C:"Epidural abscess",D:"Metastatic spinal cord compression"},ans:"A",topic:"Neurology",acgme:"MK",pts:25,diff:2},
+  {id:194,q:"A 35-year-old woman with SLE: high fever, pancytopenia, ferritin 62K, triglycerides 650, bone marrow showing hemophagocytosis. Diagnosis?",opts:{A:"Sepsis from SLE flare",B:"Hemophagocytic lymphohistiocytosis (HLH)",C:"Drug-induced bone marrow suppression",D:"TTP"},ans:"B",topic:"Hematology",acgme:"MK",pts:30,diff:3},
+  {id:195,q:"ACLS guidelines for asystole or PEA arrest. Which medication should be given?",opts:{A:"Epinephrine 1mg IV q3-5min",B:"Atropine 1mg IV q3-5min",C:"Amiodarone 300mg IV bolus",D:"Vasopressin 40 units IV x1"},ans:"A",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+  {id:196,q:"A 58-year-old man with known AAA: sudden-onset severe tearing abdominal/back pain and syncope. BP 84/52. Most appropriate next step?",opts:{A:"CT angiography of the abdomen and pelvis",B:"Emergent vascular surgery consultation and OR",C:"FAST exam to assess for hemoperitoneum",D:"Aortography in IR"},ans:"B",topic:"Vascular",acgme:"PC",pts:25,diff:2},
+  {id:197,q:"An 82-year-old woman on warfarin falls: GCS 13, 15mm subdural hematoma with 5mm midline shift. INR 3.8. Most appropriate immediate treatment?",opts:{A:"Vitamin K IV alone",B:"4-factor PCC for immediate INR reversal plus neurosurgery consult",C:"FFP 4 units and reassess",D:"Observation \u2014 hematoma is small"},ans:"B",topic:"Trauma",acgme:"PC",pts:25,diff:2},
+  {id:198,q:"A 24-year-old woman: acute right lower quadrant pain. Ultrasound shows 7cm right ovarian cyst with absent Doppler flow. Hemodynamically stable with mild peritoneal signs. Diagnosis and management?",opts:{A:"Ruptured ectopic pregnancy \u2014 emergent surgery",B:"Ovarian torsion \u2014 emergent gynecology consultation and detorsion",C:"Ovarian cyst \u2014 outpatient GYN follow-up",D:"Appendicitis \u2014 surgical consultation"},ans:"B",topic:"OB/GYN",acgme:"MK",pts:25,diff:2},
+  {id:199,q:"A 65-year-old man: sudden abdominal pain out of proportion to exam, AF, lactate 8.2, pH 7.18. CT: pneumatosis intestinalis. Most appropriate treatment?",opts:{A:"IV antibiotics alone and NPO",B:"Emergent surgical exploration \u2014 bowel resection",C:"Catheter-directed thrombolysis via SMA",D:"IV heparin and reassess in 6 hours"},ans:"B",topic:"Vascular",acgme:"PC",pts:30,diff:3},
+  {id:200,q:"Per ACLS guidelines, initial energy for defibrillation of pulseless VT/VF with a biphasic defibrillator?",opts:{A:"50-100J",B:"200J (or device-specific recommendation)",C:"360J",D:"150J only \u2014 never higher for first shock"},ans:"B",topic:"Cardiovascular",acgme:"MK",pts:20,diff:1},
+];
+
+const SQUARES_MAP = [
+  {id:0,  cx:62,  cy:62,  name:'START / FINISH',       pts:50,  diff_max:1, special:'start',   tc:'#D4AF37'},
+  {id:1,  cx:151, cy:62,  name:'Vital Signs & Shock',  pts:10,  diff_max:2, topic:'Critical Care',    tc:'#E84855'},
+  {id:2,  cx:218, cy:62,  name:'Airway Management',    pts:10,  diff_max:2, topic:'Critical Care',    tc:'#00C9B1'},
+  {id:3,  cx:285, cy:62,  name:'Fluids & Electrolytes',pts:10,  diff_max:2, topic:'Renal',            tc:'#F5A623'},
+  {id:'wc1',cx:352,cy:62, name:'Wild Card',             pts:0,   diff_max:3, special:'wildcard',tc:'#D4AF37'},
+  {id:4,  cx:419, cy:62,  name:'Infectious Disease I', pts:15,  diff_max:2, topic:'Infectious Disease',tc:'#3EC66A'},
+  {id:5,  cx:486, cy:62,  name:'Cardiology I',         pts:15,  diff_max:3, topic:'Cardiology',       tc:'#D4AF37'},
+  {id:'ch',cx:576,cy:62,  name:'Challenge',             pts:0,   diff_max:4, special:'challenge',tc:'#7B61FF'},
+  {id:6,  cx:576, cy:147, name:'Pulmonology I',         pts:15,  diff_max:2, topic:'Pulmonology',      tc:'#00C9B1'},
+  {id:7,  cx:576, cy:207, name:'Neurology I',           pts:20,  diff_max:3, topic:'Neurology',        tc:'#7B61FF'},
+  {id:'rest',cx:576,cy:267,name:'Rest',                 pts:0,   diff_max:0, special:'rest',    tc:'#6B7C93'},
+  {id:8,  cx:576, cy:327, name:'GI & Hepatology',       pts:20,  diff_max:3, topic:'GI / Hepatology',  tc:'#F5A623'},
+  {id:9,  cx:576, cy:387, name:'Renal & Nephrology',    pts:20,  diff_max:3, topic:'Renal',            tc:'#00C9B1'},
+  {id:10, cx:576, cy:447, name:'Radiology & Imaging',   pts:25,  diff_max:3, topic:'Pulmonology',      tc:'#D4AF37'},
+  {id:'pen',cx:576,cy:555,name:'Penalty Box',           pts:-25, diff_max:0, special:'penalty', tc:'#E84855'},
+  {id:11, cx:486, cy:577, name:'Endocrinology',         pts:25,  diff_max:3, topic:'Endocrinology',    tc:'#F5A623'},
+  {id:12, cx:419, cy:577, name:'Critical Care',         pts:30,  diff_max:4, topic:'Critical Care',    tc:'#E84855'},
+  {id:'wc2',cx:352,cy:577,name:'Wild Card',             pts:0,   diff_max:4, special:'wildcard',tc:'#D4AF37'},
+  {id:13, cx:285, cy:577, name:'Advanced Cardiology',   pts:30,  diff_max:4, topic:'Cardiology',       tc:'#D4AF37'},
+  {id:14, cx:218, cy:577, name:'Hematology/Onc',        pts:35,  diff_max:4, topic:'Hematology',       tc:'#7B61FF'},
+  {id:15, cx:151, cy:577, name:'Toxicology',            pts:35,  diff_max:5, topic:'Infectious Disease',tc:'#3EC66A'},
+  {id:'bonus',cx:62,cy:577,name:'Bonus Round',          pts:50,  diff_max:0, special:'bonus',   tc:'#3EC66A'},
+  {id:16, cx:62,  cy:487, name:'Trauma & Orthopedics',  pts:35,  diff_max:4, topic:'Critical Care',    tc:'#E84855'},
+  {id:17, cx:62,  cy:417, name:'OB/GYN',                pts:35,  diff_max:3, topic:'OB/GYN',           tc:'#F472B6'},
+  {id:18, cx:62,  cy:347, name:'Psychiatry',            pts:40,  diff_max:4, topic:'Neurology',        tc:'#7B61FF'},
+  {id:19, cx:62,  cy:277, name:'Pediatrics Advanced',   pts:40,  diff_max:4, topic:'Pediatrics',       tc:'#F5A623'},
+  {id:20, cx:62,  cy:207, name:'BOSS: Boards Mastery',  pts:50,  diff_max:5, special:'boss',    tc:'#D4AF37'},
+  {id:21, cx:62,  cy:145, name:'Immunology & Rheum',    pts:45,  diff_max:4, topic:'Infectious Disease',tc:'#3EC66A'},
+];
+
+const BOARD_ORDER = [0,1,2,3,'wc1',4,5,'ch',6,7,'rest',8,9,10,'pen',11,12,'wc2',13,14,15,'bonus',16,17,18,19,20,21];
+
+
+
+
+// ══ GAME STATE ════════════════════════════════════════════════════
+var playerName = 'Resident';
+var playerPos = 0;
+var playerScore = 0;
+var playerCorrect = 0;
+var playerTotal = 0;
+var playerRound = 1;
+var playerByTopic = {};
+var qPerGame = 20;
+var qAnswered = 0;
+var isMoving = false;
+var currentQ = null;
+var qTimerInterval = null;
+var qTimeLeft = 60;
+var usedQIds = new Set();
+
+// Build ordered board squares list for movement
+var BOARD_SQUARES_MAP = SQUARES_MAP;
+
+// ══ SETUP ═════════════════════════════════════════════════════════
+function selQCount(n) {
+  qPerGame = n;
+  document.querySelectorAll('.q-count-btn').forEach(function(b){b.classList.remove('sel');});
+  event.target.classList.add('sel');
+}
+
+function startGame() {
+  var inp = document.getElementById('nameInput');
+  var name = (inp.value||'').trim();
+  if(!name){ inp.focus(); toast('Enter your name to start'); return; }
+  playerName = name;
+  playerPos = 0;
+  playerScore = 0;
+  playerCorrect = 0;
+  playerTotal = 0;
+  playerRound = 1;
+  playerByTopic = {};
+  qAnswered = 0;
+  usedQIds = new Set();
+
+  buildBoard();
+  updateScoreBar();
+  showScreen('s-game');
+  toast('Welcome, ' + playerName + '! Roll to start!');
+}
+
+// ══ BOARD DRAWING ═════════════════════════════════════════════════
+function buildBoard() {
+  var svg = document.getElementById('boardSvg');
+  svg.innerHTML = '';
+
+  // Background
+  var bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  bg.setAttribute('width','420'); bg.setAttribute('height','420');
+  bg.setAttribute('fill','#0A1428'); bg.setAttribute('rx','16');
+  svg.appendChild(bg);
+
+  // Draw squares
+  BOARD_SQUARES_MAP.forEach(function(sq) {
+    var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('id','sq-'+sq.id);
+
+    var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', sq.cx); circle.setAttribute('cy', sq.cy);
+    circle.setAttribute('r','18');
+    circle.setAttribute('fill', playerPos === sq.id ? 'rgba(201,162,39,0.3)' : 'rgba(255,255,255,0.06)');
+    circle.setAttribute('stroke', sq.tc || '#ffffff22');
+    circle.setAttribute('stroke-width','1.5');
+    g.appendChild(circle);
+
+    // Square label (short)
+    var label = sq.special === 'start' ? 'GO' :
+                sq.special === 'wildcard' ? '★' :
+                sq.special === 'challenge' ? '⚡' :
+                sq.special === 'rest' ? '💤' :
+                sq.special === 'penalty' ? '⚠' :
+                sq.special === 'bonus' ? '🎁' :
+                (sq.id !== undefined ? String(sq.id) : '?');
+
+    var text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', sq.cx); text.setAttribute('y', sq.cy + 4);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('font-size', sq.special ? '14' : '11');
+    text.setAttribute('font-family','system-ui,sans-serif');
+    text.setAttribute('font-weight','700');
+    text.setAttribute('fill', sq.tc || 'rgba(245,240,232,0.6)');
+    text.textContent = label;
+    g.appendChild(text);
+
+    svg.appendChild(g);
+  });
+
+  // Draw connection lines between squares
+  drawConnections(svg);
+
+  // Draw player token
+  drawToken(svg);
+}
+
+function drawConnections(svg) {
+  // Connect squares in BOARD_ORDER
+  for(var i=0; i<BOARD_ORDER.length-1; i++) {
+    var sq1 = BOARD_SQUARES_MAP.find(function(s){return s.id===BOARD_ORDER[i];});
+    var sq2 = BOARD_SQUARES_MAP.find(function(s){return s.id===BOARD_ORDER[i+1];});
+    if(!sq1||!sq2) continue;
+    var line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',sq1.cx); line.setAttribute('y1',sq1.cy);
+    line.setAttribute('x2',sq2.cx); line.setAttribute('y2',sq2.cy);
+    line.setAttribute('stroke','rgba(255,255,255,0.08)');
+    line.setAttribute('stroke-width','1');
+    line.setAttribute('stroke-dasharray','3,4');
+    svg.insertBefore(line, svg.firstChild.nextSibling);
+  }
+  // Connect last to first
+  var sqLast = BOARD_SQUARES_MAP.find(function(s){return s.id===BOARD_ORDER[BOARD_ORDER.length-1];});
+  var sqFirst = BOARD_SQUARES_MAP.find(function(s){return s.id===BOARD_ORDER[0];});
+  if(sqLast&&sqFirst){
+    var line2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line2.setAttribute('x1',sqLast.cx); line2.setAttribute('y1',sqLast.cy);
+    line2.setAttribute('x2',sqFirst.cx); line2.setAttribute('y2',sqFirst.cy);
+    line2.setAttribute('stroke','rgba(255,255,255,0.08)');
+    line2.setAttribute('stroke-width','1');
+    line2.setAttribute('stroke-dasharray','3,4');
+    svg.insertBefore(line2, svg.firstChild.nextSibling);
+  }
+}
+
+function drawToken(svg) {
+  var existing = document.getElementById('player-token');
+  if(existing) existing.remove();
+  var sq = BOARD_SQUARES_MAP.find(function(s){return s.id===playerPos;});
+  if(!sq) return;
+  var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id','player-token');
+  var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circle.setAttribute('cx',sq.cx); circle.setAttribute('cy',sq.cy);
+  circle.setAttribute('r','11');
+  circle.setAttribute('fill','#C9A227');
+  circle.setAttribute('stroke','#0D1B3E');
+  circle.setAttribute('stroke-width','2');
+  g.appendChild(circle);
+  var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',sq.cx); t.setAttribute('y',sq.cy+5);
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','12');
+  t.textContent = '🩺';
+  g.appendChild(t);
+  svg.appendChild(g);
+}
+
+// ══ DICE & MOVEMENT ═══════════════════════════════════════════════
+function rollDice() {
+  if(isMoving) return;
+  var btnRoll = document.getElementById('btnRoll');
+  btnRoll.disabled = true;
+  var d1 = document.getElementById('die1');
+  var d2 = document.getElementById('die2');
+  d1.classList.add('rolling');
+  d2.classList.add('rolling');
+  var n=0, r1=1, r2=1;
+  var iv = setInterval(function(){
+    r1 = Math.ceil(Math.random()*6);
+    r2 = Math.ceil(Math.random()*6);
+    d1.textContent = r1;
+    d2.textContent = r2;
+    if(++n > 12){
+      clearInterval(iv);
+      d1.classList.remove('rolling');
+      d2.classList.remove('rolling');
+      var roll = r1+r2;
+      toast('Rolled '+r1+'+'+r2+' = '+roll);
+      setTimeout(function(){ movePlayer(roll); }, 300);
+    }
+  }, 70);
+}
+
+function movePlayer(steps) {
+  isMoving = true;
+  var curOrderIdx = BOARD_ORDER.indexOf(playerPos);
+  if(curOrderIdx === -1) curOrderIdx = 0;
+
+  function stepOnce() {
+    curOrderIdx = (curOrderIdx+1) % BOARD_ORDER.length;
+    playerPos = BOARD_ORDER[curOrderIdx];
+    // Check for lap completion
+    if(curOrderIdx === 0 && steps > 0) {
+      playerRound++;
+      playerScore += 50;
+      updateScoreBar();
+    }
+    animateToken();
+    steps--;
+    if(steps > 0){
+      setTimeout(stepOnce, 240);
+    } else {
+      isMoving = false;
+      onLand(playerPos);
+    }
+  }
+  stepOnce();
+}
+
+function animateToken() {
+  var sq = BOARD_SQUARES_MAP.find(function(s){return s.id===playerPos;});
+  if(!sq) return;
+  var token = document.getElementById('player-token');
+  if(token){
+    var circle = token.querySelector('circle');
+    var text = token.querySelector('text');
+    if(circle){ circle.setAttribute('cx',sq.cx); circle.setAttribute('cy',sq.cy); }
+    if(text){ text.setAttribute('x',sq.cx); text.setAttribute('y',sq.cy+5); }
+  } else {
+    drawToken(document.getElementById('boardSvg'));
+  }
+  // Highlight current square
+  updateSquareHighlight();
+}
+
+function updateSquareHighlight() {
+  BOARD_SQUARES_MAP.forEach(function(sq){
+    var g = document.getElementById('sq-'+sq.id);
+    if(!g) return;
+    var circle = g.querySelector('circle');
+    if(!circle) return;
+    if(sq.id === playerPos){
+      circle.setAttribute('fill','rgba(201,162,39,0.25)');
+      circle.setAttribute('stroke',sq.tc||'#C9A227');
+      circle.setAttribute('stroke-width','2.5');
+    } else {
+      circle.setAttribute('fill','rgba(255,255,255,0.06)');
+      circle.setAttribute('stroke',sq.tc||'rgba(255,255,255,0.13)');
+      circle.setAttribute('stroke-width','1.5');
+    }
+  });
+}
+
+function onLand(squareId) {
+  var sq = BOARD_SQUARES_MAP.find(function(s){return s.id===squareId;}) || BOARD_SQUARES_MAP[0];
+  updateScoreBar();
+
+  // Update sq info
+  var info = document.getElementById('g-sq-info');
+  if(info) info.textContent = sq.name || 'Square '+squareId;
+
+  if(sq.special === 'start'){
+    toast('Back at START! +50 bonus points! 🎉');
+    playerScore += 50;
+    updateScoreBar();
+    setTimeout(function(){ document.getElementById('btnRoll').disabled = false; }, 600);
+    return;
+  }
+  if(sq.special === 'rest'){
+    toast('Rest square — skip a turn, take a breath 😮‍💨');
+    setTimeout(function(){ document.getElementById('btnRoll').disabled = false; }, 1500);
+    return;
+  }
+  if(sq.special === 'penalty'){
+    toast('Penalty! -10 pts ⚠');
+    playerScore = Math.max(0, playerScore-10);
+    updateScoreBar();
+    setTimeout(function(){ document.getElementById('btnRoll').disabled = false; }, 1500);
+    return;
+  }
+  if(sq.special === 'bonus'){
+    toast('Bonus square! +20 pts 🎁');
+    playerScore += 20;
+    updateScoreBar();
+    setTimeout(function(){ document.getElementById('btnRoll').disabled = false; }, 1500);
+    return;
+  }
+
+  // Regular square — ask a question
+  var topic = sq.topic || 'Emergency Medicine';
+  var pts = sq.pts || 10;
+  askQuestion(topic, pts, sq.name);
+}
+
+// ══ QUESTIONS ═════════════════════════════════════════════════════
+function getQuestion(topic, diffMax) {
+  // Filter by topic if possible, fallback to any
+  var pool = QUESTIONS.filter(function(q){
+    return !usedQIds.has(q.id) && q.ans && Object.keys(q.opts||{}).length >= 2;
+  });
+  var topicPool = pool.filter(function(q){ return q.topic === topic; });
+  var usePool = topicPool.length > 0 ? topicPool : pool;
+  if(usePool.length === 0){
+    // All questions used — allow reuse
+    usedQIds.clear();
+    usePool = QUESTIONS.filter(function(q){ return q.ans && Object.keys(q.opts||{}).length >= 2; });
+  }
+  return usePool[Math.floor(Math.random()*usePool.length)];
+}
+
+function askQuestion(topic, pts, sqName) {
+  var q = getQuestion(topic, 3);
+  if(!q){ endGame(); return; }
+  currentQ = { q: q, pts: pts, topic: topic, sqName: sqName };
+
+  // Populate modal
+  document.getElementById('q-topic').textContent = q.topic || topic;
+  document.getElementById('q-pts').textContent = pts+' pts';
+  document.getElementById('q-sq-name').textContent = sqName || '';
+  document.getElementById('q-stem').textContent = q.q;
+  document.getElementById('q-feedback').className = 'q-feedback';
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('btnNext').className = 'btn-next';
+
+  // Build choices
+  var choicesDiv = document.getElementById('q-choices');
+  choicesDiv.innerHTML = '';
+  ['A','B','C','D'].forEach(function(letter){
+    if(!q.opts[letter]) return;
+    var btn = document.createElement('button');
+    btn.className = 'q-choice';
+    btn.innerHTML = '<span class="q-choice-letter">'+letter+'</span><span>'+q.opts[letter]+'</span>';
+    btn.onclick = function(){ answerQuestion(letter, btn); };
+    choicesDiv.appendChild(btn);
+  });
+
+  // Timer
+  qTimeLeft = 60;
+  startQTimer();
+
+  // Show modal
+  var modal = document.getElementById('q-modal');
+  modal.classList.add('show');
+}
+
+function startQTimer() {
+  clearInterval(qTimerInterval);
+  var fill = document.getElementById('q-timer');
+  fill.style.width = '100%';
+  fill.style.background = 'var(--gold)';
+  qTimerInterval = setInterval(function(){
+    qTimeLeft--;
+    var pct = (qTimeLeft/60)*100;
+    fill.style.width = pct+'%';
+    if(qTimeLeft <= 15) fill.style.background = 'var(--red)';
+    else if(qTimeLeft <= 30) fill.style.background = '#F5A623';
+    if(qTimeLeft <= 0){
+      clearInterval(qTimerInterval);
+      timeOut();
+    }
+  }, 1000);
+}
+
+function answerQuestion(letter, btn) {
+  clearInterval(qTimerInterval);
+  var q = currentQ.q;
+  var correct = letter === q.ans;
+  var pts = currentQ.pts;
+
+  // Mark choices
+  document.querySelectorAll('.q-choice').forEach(function(b){ b.onclick = null; b.style.cursor='default'; });
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  if(!correct){
+    // Reveal correct
+    document.querySelectorAll('.q-choice').forEach(function(b){
+      var letterEl = b.querySelector('.q-choice-letter');
+      if(letterEl && letterEl.textContent === q.ans) b.classList.add('reveal');
+    });
+  }
+
+  // Feedback
+  var fb = document.getElementById('q-feedback');
+  if(correct){
+    fb.className = 'q-feedback correct';
+    fb.textContent = '✓ Correct! +'+pts+' points';
+    playerScore += pts;
+    playerCorrect++;
+    confetti();
+    correctSound();
+  } else {
+    fb.className = 'q-feedback wrong';
+    fb.textContent = '✗ Incorrect. Correct: '+q.ans+'. '+q.opts[q.ans];
+    trombone();
+  }
+
+  // Track stats
+  playerTotal++;
+  qAnswered++;
+  usedQIds.add(q.id);
+  if(!playerByTopic[q.topic||'General']) playerByTopic[q.topic||'General']={c:0,t:0};
+  playerByTopic[q.topic||'General'].t++;
+  if(correct) playerByTopic[q.topic||'General'].c++;
+
+  updateScoreBar();
+  document.getElementById('btnNext').className = 'btn-next show';
+
+  // Check if game over
+  if(qAnswered >= qPerGame){
+    document.getElementById('btnNext').textContent = 'See Results →';
+    document.getElementById('btnNext').onclick = endGame;
+  }
+}
+
+function timeOut() {
+  var q = currentQ.q;
+  var fb = document.getElementById('q-feedback');
+  fb.className = 'q-feedback wrong';
+  fb.textContent = '⏱ Time\'s up! Correct: '+q.ans+'. '+q.opts[q.ans];
+  document.querySelectorAll('.q-choice').forEach(function(b){
+    b.onclick = null;
+    var letterEl = b.querySelector('.q-choice-letter');
+    if(letterEl && letterEl.textContent === q.ans) b.classList.add('reveal');
+  });
+  playerTotal++;
+  qAnswered++;
+  usedQIds.add(q.id);
+  if(!playerByTopic[q.q||'General']) playerByTopic[q.topic||'General']={c:0,t:0};
+  playerByTopic[q.topic||'General'].t = (playerByTopic[q.topic||'General']||{t:0}).t + 1;
+  document.getElementById('btnNext').className = 'btn-next show';
+  trombone();
+}
+
+function nextTurn() {
+  document.getElementById('q-modal').classList.remove('show');
+  document.getElementById('btnNext').onclick = nextTurn;
+  document.getElementById('btnNext').textContent = 'Continue →';
+  setTimeout(function(){
+    document.getElementById('btnRoll').disabled = false;
+  }, 300);
+}
+
+// ══ SCORE BAR ═════════════════════════════════════════════════════
+function updateScoreBar() {
+  document.getElementById('g-name').textContent = playerName;
+  document.getElementById('g-pts').textContent = playerScore;
+  var sq = BOARD_SQUARES_MAP.find(function(s){return s.id===playerPos;});
+  document.getElementById('g-sq').textContent = (sq?sq.name:'Start')+' · Round '+playerRound;
+}
+
+// ══ END GAME ══════════════════════════════════════════════════════
+function endGame() {
+  clearInterval(qTimerInterval);
+  document.getElementById('q-modal').classList.remove('show');
+
+  var acc = playerTotal > 0 ? Math.round(playerCorrect/playerTotal*100) : 0;
+
+  // Trophy
+  var trophy = acc >= 80 ? '🏆' : acc >= 60 ? '🥈' : '📚';
+  document.getElementById('r-trophy').textContent = trophy;
+  document.getElementById('r-score').textContent = playerScore;
+  document.getElementById('r-name').textContent = playerName;
+  document.getElementById('r-correct').textContent = playerCorrect;
+  document.getElementById('r-total').textContent = playerTotal;
+  document.getElementById('r-acc').textContent = acc+'%';
+  document.getElementById('r-rounds').textContent = playerRound;
+
+  // Topics
+  var topicsDiv = document.getElementById('r-topics');
+  topicsDiv.innerHTML = '';
+  Object.entries(playerByTopic).sort(function(a,b){return b[1].t-a[1].t;}).forEach(function(entry){
+    var topic = entry[0], data = entry[1];
+    var pct = data.t > 0 ? Math.round(data.c/data.t*100) : 0;
+    var color = pct >= 75 ? '#3EC66A' : pct >= 60 ? '#C9A227' : '#E84855';
+    var row = document.createElement('div');
+    row.className = 'topic-row';
+    row.innerHTML =
+      '<div class="topic-name">'+topic+'</div>'+
+      '<div class="topic-bar-wrap"><div class="topic-bar" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+      '<div class="topic-pct" style="color:'+color+'">'+pct+'%</div>';
+    topicsDiv.appendChild(row);
+  });
+
+  // Save session
+  saveSession(acc);
+
+  showScreen('s-results');
+}
+
+function saveSession(acc) {
+  try {
+    var session = {
+      id: 'mob_'+Date.now(),
+      date: new Date().toISOString(),
+      player: playerName,
+      score: playerScore,
+      correct: playerCorrect,
+      total: playerTotal,
+      accuracy: acc,
+      rounds: playerRound,
+      byTopic: playerByTopic,
+      mode: 'Mobile Solo',
+    };
+    var sessions = JSON.parse(localStorage.getItem('resid_mob_sessions')||'[]');
+    sessions.push(session);
+    if(sessions.length > 100) sessions = sessions.slice(-100);
+    localStorage.setItem('resid_mob_sessions', JSON.stringify(sessions));
+  } catch(e){}
+}
+
+function resetGame() {
+  document.getElementById('nameInput').value = playerName;
+  showScreen('s-setup');
+}
+
+// ══ AUDIO ═════════════════════════════════════════════════════════
+function correctSound() {
+  try {
+    var ctx = new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach(function(freq,i){
+      var osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.type='sine'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.12,ctx.currentTime+i*0.1);
+      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+i*0.1+0.15);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.1); osc.stop(ctx.currentTime+i*0.1+0.2);
+    });
+  } catch(e){}
+}
+
+function trombone() {
+  try {
+    var ctx = new(window.AudioContext||window.webkitAudioContext)();
+    [311,277,247,220].forEach(function(freq,i){
+      var osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.type='sawtooth'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.15,ctx.currentTime+i*0.28);
+      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+i*0.28+0.26);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.28); osc.stop(ctx.currentTime+i*0.28+0.3);
+    });
+  } catch(e){}
+}
+
+// ══ CONFETTI ══════════════════════════════════════════════════════
+function confetti() {
+  var colors=['#C9A227','#3EC66A','#00A896','#F5F0E8','#E84855'];
+  for(var i=0;i<30;i++){
+    var el=document.createElement('div');
+    el.className='confetti';
+    el.style.cssText='width:'+(5+Math.random()*6)+'px;height:'+(5+Math.random()*6)+'px;'+
+      'background:'+colors[Math.floor(Math.random()*colors.length)]+';'+
+      'border-radius:'+(Math.random()>0.5?'50%':'2px')+';'+
+      'left:'+Math.random()*100+'vw;top:-10px;';
+    document.body.appendChild(el);
+    var dur=900+Math.random()*700;
+    el.animate([
+      {transform:'translate(0,0) rotate(0deg)',opacity:1},
+      {transform:'translate('+((Math.random()-0.5)*150)+'px,100vh) rotate('+(Math.random()*720)+'deg)',opacity:0}
+    ],{duration:dur,delay:Math.random()*300,easing:'ease-in'}).onfinish=function(){el.remove();};
+  }
+}
+
+// ══ TOAST ═════════════════════════════════════════════════════════
+var toastTimeout;
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+// ══ SCREEN TRANSITIONS ════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+// ══ RESTORE SAVED QUESTIONS ═══════════════════════════════════════
+(function(){
+  try {
+    var saved = JSON.parse(localStorage.getItem('resid_qbank')||'null');
+    if(saved && saved.questions && saved.questions.length > QUESTIONS.length){
+      saved.questions.forEach(function(q){
+        if(!QUESTIONS.find(function(eq){return eq.id===q.id;})){
+          QUESTIONS.push(q);
+        }
+      });
+    }
+  } catch(e){}
+})();
+</script>
+</body>
+</html>
